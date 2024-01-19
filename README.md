@@ -1,23 +1,31 @@
-# OpenData
+# EstateMetrics
 
-A repository platform for maintaining open data, providing a hub for data enthusiasts, researchers, and businesses, streamlining the access, management, and utilization of open datasets. Centralizing diverse data into one unified repository, we champion collaborative data management akin to "GitHub for datasets." With tools for standardized data schemas and advanced querying, even non-tech-savvy users should be able to delve deep into data analysis. From fetching relevant datasets using everyday language to AI-powered predictions, our goal is to democratize data, making it easily accessible and actionable for everyone.
+Welcome to the EstateMetrics GitHub repository! EstateMetrics is a powerful, data-driven tool designed to provide real estate investors with insightful analysis of property investments. Our tool leverages Redfin's property data to calculate investment metadata, helping you quickly identify properties that align with your investment goals.
+
+## Features
+
+- **Property Analysis:** Rapidly assess investment potential of properties listed on Redfin.
+- **Investment Metrics:** Access key investment metrics like ROI, cap rate, and cash flow projections.
+- **Custom Filters:** Tailor searches to your investment criteria to find your ideal property.
+- **Market Insights:** Stay ahead with data-driven insights into real estate market trends.
+- **User-friendly Interface:** Intuitive design for easy navigation and use.
 
 ## Getting Started
 
 1. **Clone the Repository**:
-   
+
    ```bash
-   git clone git@github.com:rileyhilliard/opendata.git
+   git clone git@github.com:rileyhilliard/estatemetrics.git
    ```
 
    ```bash
-   gh repo clone rileyhilliard/opendata
+   gh repo clone rileyhilliard/estatemetrics
    ```
 
 2. **Install Dependencies**:
-   
+
    ```bash
-   cd opendata
+   cd estatemetrics
    yarn
    ```
 
@@ -27,60 +35,18 @@ A repository platform for maintaining open data, providing a hub for data enthus
    yarn start
    ```
 
-4. **Open Svelte App**
-  ```bash
-   visit http://localhost:3000/
-   ```
-   
+4. **Open React App**
+
+```bash
+ visit http://localhost:3000/
+```
+
 5. **Open Apollo Graphql Environment**
-  ```bash
-   visit http://localhost:4000/graphql or http://localhost:3000/graphql
-   ```
 
-## Features
-
-- **Community-Driven Data Repositories**: Users can upload and maintain datasets, fostering an open-data ecosystem.
-  
-- **Automated Data Profiling**: The system attempts to identify patterns and similarities between datasets to establish potential relations.
-  
-- **Dynamic Data Associations**: Identified relationships between datasets are recorded, enabling complex cross-repository queries and analyses.
-
-- **GraphQL Integration**: Data retrieval powered by Apollo GraphQL, allowing for flexible and efficient queries.
-
-- **User Authentication**: Secure user registration and authentication mechanisms.
-
-## Tech Stack
-
-### Backend
-
-- **Language**: Node.js
-- **Authentication**: OAuth (via Passport.js)
-- **Database**: MongoDB
-- **API**: Apollo GraphQL
-
-### Frontend
-
-- **Framework**: SvelteKit
-- **Authentication**: 
-- **CSS**: Tailwind
-- **Build Tool**: Vite
-- **Testing**: ViTest
-
-## Contribution Guidelines
-
-We welcome contributions! If you're looking to contribute:
-
-1. Create a new feature branch.
-2. Make your changes.
-3. Submit a pull request with a detailed description of the changes.
-
-For detailed contribution guidelines, refer to [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Roadmap
-
-https://docs.google.com/document/d/1PzYTAwi8ZQV_tEXXF3eMDjFuXUlk3oIk9qUbqgMH1qk/edit?usp=sharing
+```bash
+ visit http://localhost:4000/graphql or http://localhost:3000/graphql
+```
 
 ## License
 
-This project is propriatary and cannot be licensed 
-   
+This project is propriatary and cannot be licensed

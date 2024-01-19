@@ -6,8 +6,8 @@
     "killprocesses": "lsof -ti:3000 | xargs kill && lsof -ti:4000 | xargs kill && tmux kill-session -t mySession 2>/dev/null",
     "start:old": "yarn killprocesses && lerna run start --parallel",
     "start": "yarn killprocesses ; ./scripts/serve.sh",
-    "start:frontend": "lerna run start --scope @cap/frontend",
-    "start:backend": "lerna run start --scope @cap/backend",
+    "start:frontend": "lerna run start --scope @estatemetrics/frontend",
+    "start:backend": "lerna run start --scope @estatemetrics/backend",
     "reset": "rm -rf ./node_modules yarn.lock && yarn",
     "cleanup": "rm -rf ./packages/backend/dist ./packages/frontend/.next",
     "graphql:types": "graphql-codegen --config codegen.ts"
