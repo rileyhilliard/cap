@@ -36,7 +36,7 @@ const durationFormat = format.printf(info => {
     typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg
   ).join(' ');
 
-  return `${formattedTimestamp} [${info.level}]: ${info.message} ${argsString} (${formattedDuration})`;
+  return `${formattedDuration} | ${formattedTimestamp} [${info.level}]: ${info.message} ${argsString}`;
 });
 
 
