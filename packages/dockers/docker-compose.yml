@@ -2,14 +2,14 @@ version: "3"
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
-    container_name: elasticsearch
+    container_name: elasticsearch_estatemetrics
     environment:
       - discovery.type=single-node
     volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
+      - elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "9400:9400"
+      - "9500:9500"
 
 volumes:
-  elasticsearch-data:
+  elasticsearch-data-estatemetrics:

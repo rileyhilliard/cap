@@ -4,48 +4,46 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "yarn run dev",
+    "start": "yarn dev",
     "rename:mjs": "./scripts/rename.sh",
     "compile": "tsc --incremental",
     "watch": "yarn run compile --watch",
     "serve": "node --inspect ./dist/index.js",
-    "dev": "concurrently \"yarn run watch\" \"nodemon --watch 'dist/**/*' -e js,mjs,cjs --exec 'yarn run serve'\""
+    "elasticsearch:start": "docker-compose -f ../dockers/docker-compose.yml up -d",
+    "dev": "yarn elasticsearch:start && yarn vite dev"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@apollo/server": "^4.10.0",
+    "@apollo/server": "^4.10.4",
     "body-parser": "^1.20.2",
-    "express": "^4.18.2",
+    "express": "^4.19.2",
     "graphql": "^16.8.1",
-    "mongoose": "^8.1.0"
+    "mongoose": "^8.3.3"
   },
   "devDependencies": {
-    "@elastic/elasticsearch": "^8.11.0",
-    "@faker-js/faker": "^8.3.1",
-    "@typegoose/typegoose": "^12.1.0",
+    "@elastic/elasticsearch": "^8.13.1",
+    "@faker-js/faker": "^8.4.1",
+    "@typegoose/typegoose": "^12.4.0",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^1.4.11",
-    "@types/node": "^20.11.5",
+    "@types/node": "^20.12.7",
     "@types/winston": "^2.4.4",
     "concurrently": "^8.2.2",
-    "csv-parse": "^5.5.3",
-    "graphql-scalars": "^1.22.4",
-    "nodemon": "^3.0.3",
-    "puppeteer": "^21.7.0",
-    "reflect-metadata": "^0.2.1",
-    "type-graphql": "2.0.0-beta.6",
-    "typescript": "^5.3.3",
-    "winston": "^3.11.0",
-    "winston-daily-rotate-file": "^4.7.1"
-  },
-  "volta": {
-    "node": "18.18.0",
-    "yarn": "3.6.4"
+    "csv-parse": "^5.5.5",
+    "graphql-scalars": "^1.23.0",
+    "puppeteer": "^22.7.1",
+    "reflect-metadata": "^0.2.2",
+    "type-graphql": "2.0.0-rc.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.10",
+    "vite-plugin-node": "^3.1.0",
+    "winston": "^3.13.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

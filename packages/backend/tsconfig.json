@@ -2,16 +2,16 @@
   "compilerOptions": {
     "rootDirs": ["src"],
     "outDir": "dist",
-    "lib": ["es2022"],
-    "target": "es2022",
-    "module": "esnext",
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "types": ["node"],
     "incremental": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "baseUrl": ".", 
+    "baseUrl": ".",
     "paths": {
       "@backend/*": ["./src/*"]
     },
@@ -24,7 +24,5 @@
     "removeComments": true,
     "sourceMap": true
   },
-  "include": [
-    "./src/**/*.ts"
-  ]
+  "include": ["./src/**/*.ts"]
 }
