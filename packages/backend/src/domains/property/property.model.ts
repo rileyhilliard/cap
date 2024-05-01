@@ -12,7 +12,7 @@ export class Property extends BaseModel {
 
 export const PropertyModel = getModelForClass(Property, {
   schemaOptions: {
-    toJSON: { virtuals: true },
+    // toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 });

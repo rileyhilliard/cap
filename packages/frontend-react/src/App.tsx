@@ -8,9 +8,10 @@ type PropertyType = {
   mlsId: { value: React.Key | null | undefined };
   url: string;
   price: { value: number };
-  cashFlow: { yearlyNet: number };
+  cashFlow: { yearly: { net: number } };
   [key: string]: any;
 };
+
 
 type DataType = PropertyType[] | null;
 
@@ -49,7 +50,7 @@ const App: FC = () => {
       .then(response => response.json())
       .then(data => {
         return data.sort((a: PropertyType, b: PropertyType) => {
-          return b.cashFlow.yearlyNet - a.cashFlow.yearlyNet;
+          return b.roi - a.roi;
         })
       })
       .then(setData);
@@ -68,6 +69,7 @@ const App: FC = () => {
           <TableRow>
             <TableHeader onClick={() => handleSort('url')}>URL</TableHeader>
             <TableHeader onClick={() => handleSort('price')}>Price</TableHeader>
+            <TableHeader onClick={() => handleSort('roi')}>ROI</TableHeader>
             <TableHeader onClick={() => handleSort('yearlyNet')}>Yearly Net</TableHeader>
           </TableRow>
         </TableHead>
@@ -79,7 +81,10 @@ const App: FC = () => {
               </TableCell>
               <TableCell className="text-zinc-500">{formatCurrency(property.price?.value)}</TableCell>
               <TableCell>
-                {formatCurrency(property.cashFlow.yearlyNet)}
+                {`${(property.roi * 100).toFixed(2)}%`}
+              </TableCell>
+              <TableCell>
+                {formatCurrency(property.cashFlow.yearly.net)}
               </TableCell>
             </TableRow>
           ))}
