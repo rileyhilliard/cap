@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { VitePluginNode } from 'vite-plugin-node';
+import path from 'path';
 
 export default defineConfig({
   server: {
@@ -8,8 +9,15 @@ export default defineConfig({
   plugins: [
     ...VitePluginNode({
       adapter: 'express',
-      appPath: './src/index.ts',
+      appPath: './src/server-dev.ts',
       exportName: 'app',
     }),
   ],
+  resolve: {
+    alias: {
+      '@backend': path.resolve(__dirname, './src'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@domains': path.resolve(__dirname, './src/domains')
+    },
+  },
 });

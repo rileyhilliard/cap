@@ -1,4 +1,4 @@
-import BaseModel from '../../utils/base-model.js';
+import BaseModel from '@utils/base-model';
 import { ObjectType, Field, InputType } from 'type-graphql';
 import { prop, getModelForClass } from '@typegoose/typegoose';
 
@@ -175,13 +175,13 @@ class ZillowRental extends BaseModel {
   @prop({ type: Number })
   public lotId?: number;
 
-  @prop({ _id: false })
-  public latLong!: LatLong;
+  @prop({ _id: false, type: () => LatLong })
+  public latLong?: LatLong;
 
-  @prop({ _id: false })
+  @prop({ _id: false, type: () => VariableData })
   public variableData?: VariableData;
 
-  @prop({ _id: false })
+  @prop({ _id: false, type: () => BadgeInfo })
   public badgeInfo?: BadgeInfo;
 
   @Field(type => HdpData)
@@ -301,9 +301,11 @@ class ZillowRental extends BaseModel {
   // Virtual for rent
   @Field(type => Number)
   public get rent(): number {
-    // Extract the numerical value from the price string
-    console.log(this.price)
-    const digits = this.price?.replace(/[^0-9]/g, "") ?? '';
+    if (!this.price) {
+      console.log('Price not available yet');
+      return 0; // or return undefined or throw an error based on your use case
+    }
+    const digits = this.price.replace(/[^0-9]/g, "");
     return parseInt(digits, 10) || 0;
   }
 }
@@ -444,8 +446,8 @@ class ZillowRentalInput {
   @Field(type => Number, { nullable: true })
   public lotId?: number;
 
-  @Field(type => LatLongInput)
-  public latLong!: LatLongInput;
+  @Field(type => LatLongInput, { nullable: true })
+  public latLong?: LatLongInput;
 
   @Field(type => VariableDataInput, { nullable: true })
   public variableData?: VariableDataInput;

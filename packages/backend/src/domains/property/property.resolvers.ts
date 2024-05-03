@@ -1,6 +1,6 @@
 import { Resolver, Query, Arg, FieldResolver, Root, ID, Mutation, InputType, Field } from 'type-graphql';
-import { Property, PropertyModel } from './property.model.js';
-import logger from '../../utils/logger.js';
+import { Property, PropertyModel } from '@domains/property/property.model';
+import logger from '@utils/logger';
 
 export function fetchProperty(options: object): Promise<Property | null> {
   return PropertyModel.findOne(options).exec();

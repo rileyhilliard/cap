@@ -1,1 +1,1 @@
-export type * from './domains/property/property.input.model';
+export type * from '@domains/property/property.input.model';

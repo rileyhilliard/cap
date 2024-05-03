@@ -8,9 +8,8 @@
     "rename:mjs": "./scripts/rename.sh",
     "compile": "tsc --incremental",
     "watch": "yarn run compile --watch",
-    "serve": "node --inspect ./dist/index.js",
     "elasticsearch:start": "docker-compose -f ../dockers/docker-compose.yml up -d",
-    "dev": "yarn elasticsearch:start && yarn vite dev"
+    "dev": "yarn elasticsearch:start && yarn nodemon"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +36,7 @@
     "concurrently": "^8.2.2",
     "csv-parse": "^5.5.5",
     "graphql-scalars": "^1.23.0",
+    "nodemon": "^3.1.0",
     "puppeteer": "^22.7.1",
     "reflect-metadata": "^0.2.2",
     "type-graphql": "2.0.0-rc.1",

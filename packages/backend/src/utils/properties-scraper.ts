@@ -1,5 +1,5 @@
-import logger from './logger.js';
-import { Cache } from './cache.js';
+import logger from '@utils/logger';
+import { Cache } from '@utils/cache';
 import type { Request, Response } from 'express';
 
 const MONTHS_IN_YEAR = 12;
