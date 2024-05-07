@@ -11,25 +11,13 @@ import { propertiesScraper } from '@utils/properties-scraper';
 import { fetchProperty } from '@domains/property/property.resolvers';
 import ApartmentResolver, { ApartmentMutationResolver } from '@domains/apartment/apartment.resolvers';
 import ZillowRentalResolver, { ZillowRentalMutationResolver } from '@domains/rental/zillow.rental.resolvers';
-import { fetchRentalData } from '@utils/zillow';
+import { scrapeZillowRentals, scrapeZillowProperties, calculateAverageAndMedianRentalPrices } from '@utils/zillow';
 import ElasticSearch from '@utils/elastic-search';
+import { analyzeRentalData } from '@utils/market-report';
 
 export async function application(app: Express) {
   const schema = await buildSchema({
     resolvers: [ZillowRentalResolver, ZillowRentalMutationResolver, ApartmentResolver, ApartmentMutationResolver],
-  });
-
-  app.get('/test', async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const es = ElasticSearch.getInstance();
-    logger.debug('Looking up property schema', { id });
-    // const prices = await calculateAverageAndMedianRentalPrices()
-    // const apartments = await apartmentsScraper();
-    // const properties = await propertiesScraper(req, res);
-    const properties = await es.data.get('redfin_ut');
-    res.setHeader('Content-Type', 'application/json');
-    res.json(properties);
-    logger.debug('Property resolved');
   });
 
   app.get('/v1/properties/:id', async (req: Request, res: Response) => {
@@ -43,16 +31,54 @@ export async function application(app: Express) {
     logger.debug('Property resolved');
   });
 
-  app.get('/v1/zillow/:index', async (req: Request, res: Response) => {
-    console.time('/v1/zillow/:index');
-    // UT college area rentals
-    // const URL = 'https://www.zillow.com/homes/for_rent/?searchQueryState=%7B%22pagination%22%3A%7B%7D%2C%22isMapVisible%22%3Atrue%2C%22mapBounds%22%3A%7B%22west%22%3A-97.7904768939565%2C%22east%22%3A-97.67615041690571%2C%22south%22%3A30.250872135276055%2C%22north%22%3A30.355358017795723%7D%2C%22mapZoom%22%3A13%2C%22customRegionId%22%3A%22ebd3465b7cX1-CRvfdul3zlzgkr_1487v5%22%2C%22filterState%22%3A%7B%22fr%22%3A%7B%22value%22%3Atrue%7D%2C%22fsba%22%3A%7B%22value%22%3Afalse%7D%2C%22fsbo%22%3A%7B%22value%22%3Afalse%7D%2C%22nc%22%3A%7B%22value%22%3Afalse%7D%2C%22cmsn%22%3A%7B%22value%22%3Afalse%7D%2C%22auc%22%3A%7B%22value%22%3Afalse%7D%2C%22fore%22%3A%7B%22value%22%3Afalse%7D%2C%22ah%22%3A%7B%22value%22%3Atrue%7D%7D%2C%22isListVisible%22%3Atrue%7D';
-    const { index } = req.params;
-    const results = await fetchRentalData(index, req.body);
-    res.setHeader('Content-Type', 'application/json');
+  app.get('/v1/zillow/:regionId', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    console.time(`/v1/zillow/${regionId}`);
+    const es = ElasticSearch.getInstance();
+    const results = await es.data.get(regionId);
     res.json(results);
-    logger.debug('Property resolved');
-    console.timeEnd('/v1/zillow/:index')
+    console.timeEnd(`/v1/zillow/${regionId}`);
+  });
+
+  app.get('/v1/zillow/:rentalIndex/:propertyIndex', async (req: Request, res: Response) => {
+    const { rentalIndex, propertyIndex } = req.params;
+    console.time(`/v1/zillow/${rentalIndex}/${propertyIndex}`);
+    const report = await calculateAverageAndMedianRentalPrices(rentalIndex, propertyIndex);
+    res.json(report);
+    console.timeEnd(`/v1/zillow/${rentalIndex}/${propertyIndex}`);
+  });
+
+  app.get('/v1/zillow/:regionId/report', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    console.time(`/v1/zillow/${regionId}/compute`);
+    const report = await analyzeRentalData(regionId);
+    res.json(report);
+    console.timeEnd(`/v1/zillow/${regionId}/compute`);
+  });
+
+  app.put('/v1/zillow/:regionId', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    console.time(`/v1/zillow/${regionId}`);
+    const results = await scrapeZillowRentals(regionId, req.body);
+    res.json(results);
+    console.timeEnd(`/v1/zillow/${regionId}`);
+  });
+
+  app.put('/v1/props/:regionId', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    console.time(`/v1/props/${regionId}`);
+    const results = await scrapeZillowProperties(regionId, req.body);
+    res.json(results);
+    console.timeEnd(`/v1/props/${regionId}`);
+  });
+
+  app.delete('/v1/zillow/:regionId', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    console.time(`/v1/zillow/${regionId}`);
+    const es = ElasticSearch.getInstance();
+    const results = await es.index.deleteIndex(regionId);
+    res.json(results);
+    console.timeEnd(`/v1/zillow/${regionId}`);
   });
 
   app.get('/v1/indexes', async (req: Request, res: Response) => {

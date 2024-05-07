@@ -1,7 +1,7 @@
 import { Client, estypes, } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
 
-function responseTransformer(response: estypes.SearchResponse<unknown, Record<string, estypes.AggregationsAggregate>>) {
+export function responseTransformer(response: estypes.SearchResponse<unknown, Record<string, estypes.AggregationsAggregate>>) {
   const { hits } = response.hits;
   const length = hits.length;
   const result = new Array(length);
@@ -201,6 +201,7 @@ class ElasticsearchService {
     updateMetadata: async (indexName: string, newMetadata: Record<string, any>): Promise<estypes.IndicesPutMappingResponse | undefined> => {
       logger.debug(`Index ${indexName}: Updating metadata`);
       try {
+        await this.index.create(indexName);
         const existingMetadata = await this.data.metadata(indexName);
 
         return this.client.indices.putMapping({
@@ -231,16 +232,94 @@ class ElasticsearchService {
       }
     },
 
+    compute: async (index: string, _query?: estypes.QueryDslQueryContainer, _aggs?: estypes.AggregationsAggregationContainer): Promise<estypes.SearchResponse> => {
+      const client = this;
+
+      const query = _query ?? {
+        "bool": {
+          "filter": [
+            {
+              "range": {
+                "lastSeen": {
+                  "gte": "now-30d/d",
+                  "lte": "now/d"
+                }
+              }
+            }
+          ]
+        }
+      };
+
+      const aggs = _aggs ?? {
+        "unique_addresses": {
+          "terms": {
+            "field": "address.keyword",
+            "size": 10000
+          },
+          "aggs": {
+            "latest_record": {
+              "top_hits": {
+                "size": 1,
+                "_source": {
+                  "includes": ["price"]
+                },
+                "sort": [
+                  {
+                    "lastSeen": {
+                      "order": "desc"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+      };
+
+      return this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
+        index: index,
+        body: {
+          size: 0,
+          query: query,
+          aggs: aggs
+        }
+      }).catch(e => e);
+    },
+
+    query: async (indexName: string, body: estypes.SearchRequest, size: number = 1000): Promise<estypes.SearchResponse<unknown>> => {
+      logger.debug(`es: querying data from ${indexName}`);
+      body.size = body.size ?? size; // Ensure the size is set in the body, defaulting to the function parameter
+
+      try {
+        return this.client.search<estypes.SearchResponse<unknown>>({
+          index: indexName,
+          body,
+        });
+      } catch (error: any) {
+        logger.error(`Index ${indexName}: Error fetching data:`, error);
+        if (error?.meta?.body?.error?.type === 'index_not_found_exception') {
+          logger.error(`Index ${indexName} not found`);
+        }
+        return error;
+      }
+    },
+
     get: async (indexName: string, query: estypes.QueryDslQueryContainer = { match_all: {} }, size: number = 1000): Promise<DatasetSchema | void> => {
       logger.debug(`es: fetching data from ${indexName}`);
+      const body = {
+        query,
+        size,
+        // ...({
+        //   collapse: {
+        //     field: uniqueBy
+        //   }
+        // })
+      };
       try {
         // TODO: figure out why promise.all isnt properly awaiting, and make these in parallel
         const response = await this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
           index: indexName,
-          body: {
-            query,
-            size
-          }
+          body,
         });
 
         const meta = await this.data.metadata(indexName);
@@ -250,7 +329,29 @@ class ElasticsearchService {
           records,
           // @ts-ignore
           meta,
+          response,
         };
+      } catch (error) {
+        logger.error(`Index ${indexName}: Error fetching data:`, error);
+        if (error.message.includes('index_not_found_exception')) {
+          return undefined // { ...error.meta.body, message: error.message };
+        }
+
+        throw error;
+      }
+    },
+
+    record: async (indexName: string, query: estypes.QueryDslQueryContainer = { match_all: {} }, size: number = 1): Promise<KeyValuePair<unknown> | void> => {
+      try {
+        // TODO: figure out why promise.all isnt properly awaiting, and make these in parallel
+        const response = await this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
+          index: indexName,
+          body: {
+            query,
+            size
+          }
+        });
+        return (responseTransformer(response) ?? []).at(0);
       } catch (error) {
         logger.error(`Index ${indexName}: Error fetching data:`, error);
         if (error.message.includes('index_not_found_exception')) {
@@ -391,3 +492,8 @@ interface Term {
   source?: string;
   dataset?: string;
 }
+
+type KeyValuePair<T> = {
+  key: string;
+  value: T;
+};
