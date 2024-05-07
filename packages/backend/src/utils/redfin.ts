@@ -1,6 +1,8 @@
 import logger from '@utils/logger';
 import { Cache } from '@utils/cache';
-import type { Request, Response } from 'express';
+import ElasticSearch, { responseTransformer } from '@utils/elastic-search';
+import fetch from 'node-fetch';
+import { timestamp } from '@utils/helpers';
 
 const MONTHS_IN_YEAR = 12;
 const YEARLY_TAX_RATE = 0.02;
@@ -12,44 +14,109 @@ const rentAverages: { [key: string]: number } = { '1': 2122, '2': 2828, '3': 339
 
 const cache = new Cache();
 const redFinBoundary = 'https://www.redfin.com/stingray/api/gis?al=1&include_nearby_homes=true&market=austin&num_homes=350&ord=redfin-recommended-asc&page_number=1&poly=-97.75393%2030.27555%2C-97.70638%2030.27555%2C-97.70638%2030.32261%2C-97.75393%2030.32261%2C-97.75393%2030.27555&sf=1,2,3,5,6,7&start=0&status=9&uipt=1,2,3,4,5,6,7,8&v=8&zoomLevel=14';
+// https://www.redfin.com/stingray/api/gis?al=1&cluster_bounds=-97.75405%2030.27231%2C-97.71079%2030.27231%2C-97.71079%2030.32188%2C-97.75405%2030.32188%2C-97.75405%2030.27231&include_nearby_homes=true&market=austin&mpt=99&num_homes=350&ord=redfin-recommended-asc&page_number=1&sf=1,2,3,5,6,7&start=0&status=9&uipt=1,2,3,4,5,6,7,8&user_poly=-97.737783%2030.280351%2C-97.752374%2030.283835%2C-97.753919%2030.286132%2C-97.753490%2030.289097%2C-97.747739%2030.293321%2C-97.749284%2030.296804%2C-97.746366%2030.301473%2C-97.737697%2030.302881%2C-97.730659%2030.313107%2C-97.723192%2030.311329%2C-97.714094%2030.298583%2C-97.712549%2030.289912%2C-97.719072%2030.284946%2C-97.728427%2030.283093%2C-97.731946%2030.279239%2C-97.737783%2030.280351&v=8&zoomLevel=14
+interface RedfinOptions {
+  url: string;
+  meta: any;
+}
 
-export async function propertiesScraper(req: Request, res: Response): Promise<PropertiesResponse> {
-  const response = {
-    properties: [],
-    variables: {
-      yearlyPropertyTaxRate: YEARLY_TAX_RATE,
-      yearlyMaintenanceRate: YEARLY_MAINTENANCE_RATE,
-      yearlyPropertyInsuranceRate: YEARLY_PROPERTY_INSURANCE_RATE,
-      rentAverages,
+function responseTransformer(response) {
+  const date = timestamp();
+  const properties = response?.payload?.homes ?? [];
+  return properties.map(property => {
+    return {
+      ...property,
+      latLong: {
+        lat: property?.latLong?.value?.latitude,
+        lon: property?.latLong?.value?.longitude
+      },
+      address: `${property.streetLine.value}, ${property.city}, ${property.state}, ${property.zip}`,
+      url: `https://www.redfin.com${property.url}`,
+      hoa: property?.hoa?.value ?? 0,
+      price: property?.price?.value ?? undefined,
+      sqFt: property?.sqFt?.value ?? undefined,
+      pricePerSqFt: property?.pricePerSqFt?.value ?? undefined,
+      yearBuilt: property?.yearBuilt?.value ?? undefined,
+      timeOnRedfin: property?.timeOnRedfin?.value ?? undefined,
+      originalTimeOnRedfin: property?.originalTimeOnRedfin?.value ?? undefined,
+      lotSize: property?.lotSize?.value ?? undefined,
+      firstListed: timestamp(
+        +new Date(date) - (
+          property?.timeOnRedfin?.value ?? 0
+        )
+      ),
+      // todo: merge 
+      lastSeen: date,
+      firstSeen: date,
     }
-  } as PropertiesResponse;
+  })
+}
+
+export async function scrapeRedfinProperties(index: string, options: RedfinOptions): Promise<RedfinProperty[]> {
+  const es = ElasticSearch.getInstance();
+  const meta = await es.data.metadata(index);
+  const URL = meta?.url || options?.url;
+
+  if (typeof URL !== 'string') {
+    throw new Error('No redfin "stingray/api/gis?" API url found in the index metadata. Please pass in a url @ options.url');
+  }
+
   try {
-    const cachedData: Property[] = await cache.get(redFinBoundary);
+    // const esData = await es.data.get(index);
+    // if (esData) {
+    //   return esData;
+    // }
+    const cachedData: any = await cache.get(URL);
     if (cachedData) {
-      response.properties = processProperties(cachedData);
-      return response;
+      await es.index.deleteIndex(index);
+      const processed = responseTransformer(cachedData);
+      es.index.upsert(index, {
+        records: processed,
+        meta: {
+          ...(options.meta ?? {}),
+          url: options.url,
+        },
+      });
+      return processed as RedfinProperty[];
     }
 
-    const properties = await fetchProperties(redFinBoundary);
-    const data = processProperties(properties);
-
-    await cache.set(redFinBoundary, data);
-    response.properties = data;
-    return response;
+    const properties = await fetchProperties(URL);
+    es.index.upsert(index, {
+      records: properties,
+      meta: {
+        ...(options.meta ?? {}),
+        url: options.url,
+      },
+    });
+    return properties;
   } catch (error) {
-    logger.error('propertiesScraper error: ', error);
-    return response;
+    return error;
   }
 }
 
 async function fetchProperties(url: string): Promise<RedfinProperty[]> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Failed to fetch data');
+  try {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        // 'Cookie': '<IF NEEDED>',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Content-Type': 'application/json',
+        'Origin': 'https://www.redfin.com',
+        'Sec-Fetch-Mode': 'cors',
+      }
+    });
+
+    const text = await response.text();
+    const cleaned = JSON.parse(text.replace('{}&&{"', '{"'));
+    cache.set(url, cleaned);
+    return responseTransformer(cleaned);
+  } catch (error) {
+    logger.error('fetchProperties error: ', error);
+    return error;
   }
-  const text = await response.text();
-  const cleaned = JSON.parse(text.replace('{}&&{"', '{"'));
-  return cleaned?.payload?.homes || [];
 }
 
 function processProperties(properties: RedfinProperty[]): Property[] {

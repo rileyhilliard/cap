@@ -7,7 +7,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import { buildSchema } from 'type-graphql';
 import logger from '@utils/logger';
-import { propertiesScraper } from '@utils/properties-scraper';
+import { scrapeRedfinProperties } from '@backend/utils/redfin';
 import { fetchProperty } from '@domains/property/property.resolvers';
 import ApartmentResolver, { ApartmentMutationResolver } from '@domains/apartment/apartment.resolvers';
 import ZillowRentalResolver, { ZillowRentalMutationResolver } from '@domains/rental/zillow.rental.resolvers';
@@ -20,14 +20,14 @@ export async function application(app: Express) {
     resolvers: [ZillowRentalResolver, ZillowRentalMutationResolver, ApartmentResolver, ApartmentMutationResolver],
   });
 
-  app.get('/v1/properties/:id', async (req: Request, res: Response) => {
-    const { id } = req.params;
-    logger.debug('Looking up property schema', { id });
+  app.put('/v1/redfin/:regionId', async (req: Request, res: Response) => {
+    const { regionId } = req.params;
+    logger.debug('Looking up property schema', { regionId });
     // const prices = await calculateAverageAndMedianRentalPrices()
     // const apartments = await apartmentsScraper();
-    const properties = await propertiesScraper(req, res);
+    const properties = await scrapeRedfinProperties(regionId, req.body);
     res.setHeader('Content-Type', 'application/json');
-    res.json(properties.properties);
+    res.json(properties);
     logger.debug('Property resolved');
   });
 
