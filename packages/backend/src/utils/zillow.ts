@@ -5,9 +5,11 @@ import { upsertRentals } from '@domains/rental/zillow.rental.resolvers';
 import type { ZillowRentalInput } from '@domains/rental/zillow.rental.model';
 import ElasticSearch, { responseTransformer } from '@utils/elastic-search';
 import fetch from 'node-fetch';
-import { timestamp } from '@utils/helpers';
+import { timestamp, normalizeAddress, hasher, decimals } from '@utils/helpers';
 import { analyzeRentalData } from '@utils/market-report';
 import { queries } from '@utils/elastic-search-queries';
+import type { MergedProperty, DecoratedProperty, YearlyCosts, YearlyStats } from '@backend/types/property-types';
+import type { RentalReport } from '@utils/market-report';
 
 const cache = new Cache();
 const API_ROOT = 'https://www.zillow.com/async-create-search-page-state';
@@ -88,7 +90,7 @@ async function processRentalData(index: string, options: ZillowOptions, data: Zi
 
   // Process each record in parallel using Promise.all
   const computedData = await Promise.all(
-    data.map((record) => {
+    data.filter(r => r.unitCount === undefined).map((record) => {
 
       // Extract and parse the price from the record
       const price = stringToNumber(record.price);
@@ -110,13 +112,14 @@ async function processRentalData(index: string, options: ZillowOptions, data: Zi
   );
 
   // Upsert the computed data into Elasticsearch
-  await es.index.upsert(index, {
-    records: computedData,
-    meta: {
-      ...(options.meta ?? {}),
-      url: options.url,
-    },
-  });
+  // await es.index.upsert(index, {
+  //   records: computedData,
+  //   meta: {
+  //     ...(options.meta ?? {}),
+  //     url: options.url,
+  //   },
+  // });
+  return computedData;
 }
 
 // Helper function to extract and parse the price from a string
@@ -139,6 +142,8 @@ function mergeRecords(baseRecord: BaseRecord, record: ZillowRentalInput, price: 
     ...baseRecord,
     ...record,
     price,
+    address: record.address,
+    fingerprint: hasher(normalizeAddress(record.address)),
     latLong: {
       lat: record.latLong.latitude,
       lon: record.latLong.longitude
@@ -174,13 +179,12 @@ interface ComputedRecord extends Omit<ZillowRentalInput, 'price'> {
 // makes a PUT request to 'API_ROOT' with a payload of 'PAYLOAD' using the 'COOKIE' as cookies in the header 
 // and USER_AGENT as the User agent, and returns the response as a JSON object 
 export async function scrapeZillowRentals(index: string, options: ZillowOptions): Promise<any> {
-  // const cachedData = await cache.get(options.url) as ZillowRequestResults;
-  // const data = cachedData?.cat1?.searchResults?.mapResults ?? [];
-  // if (data?.length) {
-  //   logger.debug('Returning dev cache becase its been less than a week since the last PUT attempt.');
-  //   processRentalData(index, options, data);
-  //   return data;
-  // }
+  const cachedData = await cache.get(options.url) as ZillowRequestResults;
+  const data = cachedData?.cat1?.searchResults?.mapResults ?? [];
+  if (data?.length) {
+    const results = await processRentalData(index, options, data);
+    return results;
+  }
 
   const es = ElasticSearch.getInstance();
   const meta = await es.data.metadata(index);
@@ -217,8 +221,8 @@ export async function scrapeZillowRentals(index: string, options: ZillowOptions)
   es.index.updateMetadata(index, { cookies: responseCookies });
   try {
     const res = await response.json() as ZillowRequestResults;
-    processRentalData(index, options, (res?.cat1?.searchResults?.mapResults ?? []));
-    return res;
+    cache.set(options.url, res);
+    return processRentalData(index, options, (res?.cat1?.searchResults?.mapResults ?? []));
   } catch (error) {
     const text = await response.text();
     logger.error(error);
@@ -278,13 +282,14 @@ async function processListingData(index: string, options: ZillowOptions, data: Z
       // Merge the base record with the current record and additional fields
       const decoratedRecord = {
         ...baseRecord,
-        ...record, price,
+        ...record,
+        price,
         latLong: { lat: record.latLong.latitude, lon: record.latLong.longitude },
         lastSeen: date,
         firstListed: timestamp(+new Date(date) - (record.timeOnZillow ?? 0)),
         decoratedPrice: record.price,
-        url: `https://www.zillow.com${record.detailUrl}`
-
+        url: `https://www.zillow.com${record.detailUrl}`,
+        fingerprint: hasher(normalizeAddress(record.address)),
       };
 
       return decoratedRecord;
@@ -302,13 +307,7 @@ async function processListingData(index: string, options: ZillowOptions, data: Z
     });
   }
 
-  return {
-    records: computedData,
-    meta: {
-      ...(options.meta ?? {}),
-      url: options.url,
-    },
-  };
+  return computedData;
 }
 
 export async function scrapeZillowProperties(index: string, options: ZillowOptions): Promise<any> {
@@ -336,7 +335,7 @@ export async function scrapeZillowProperties(index: string, options: ZillowOptio
   }
 
   const cookies = meta?.cookies ?? options.cookies.replace('\"', "");
-  const payload = meta?.payload ?? options.payload;
+  const payload = options.payload ?? meta?.payload;
 
   const response = await fetch('https://www.zillow.com/async-create-search-page-state', {
     method: 'PUT',
@@ -356,8 +355,8 @@ export async function scrapeZillowProperties(index: string, options: ZillowOptio
   try {
     const res = await response.json() as ZillowRequestResults;
     await cache.set(options.url, res);
-    processListingData(index, options, (res?.cat1?.searchResults?.mapResults ?? []), true);
-    return res;
+    const results = await processListingData(index, options, (res?.cat1?.searchResults?.mapResults ?? []), true);
+    return results;
   } catch (error) {
     const text = await response.text();
     logger.error(error);
@@ -403,27 +402,27 @@ export async function calculateAverageAndMedianRentalPrices(rentalIndex: string,
         maintenance,
         insurance,
         totalCosts: tax + maintenance + insurance,
-        // TODO: how to find HOA (if there is one)
-        // NOTE: Redfin has HOA, so it's possible you might scrape redfin strictly for HOA
-        // and join by address
       };
-      const avgAnnualGrossIncome = avgAnnualNetIncome - yearlyCosts.totalCosts;
+      // LEFT OFF HERE: stats are being calculated wrong somehow, it almost seems like
+      // cached results are being returned, which is possible
+      const avgAnnualGrossIncome = decimals(avgAnnualNetIncome - yearlyCosts.totalCosts);
+      const medianAnnualGrossIncome = decimals(medianAnnualNetIncome - yearlyCosts.totalCosts);
       const yearlyStats = {
         avg: {
           net: avgAnnualNetIncome,
           gross: avgAnnualGrossIncome,
           roi: avgAnnualGrossIncome / property.price,
           capRate: avgAnnualGrossIncome / property.price,
-          cashFlow: avgAnnualNetIncome - yearlyCosts.totalCosts,
-          yearsTillBreakEven: property.price / (avgAnnualGrossIncome - yearlyCosts.totalCosts),
+          cashFlow: avgAnnualGrossIncome,
+          yearsTillBreakEven: decimals(property.price / avgAnnualGrossIncome),
         },
         median: {
           net: medianAnnualNetIncome,
-          gross: avgAnnualGrossIncome - yearlyCosts.totalCosts,
-          roi: avgAnnualGrossIncome / property.price,
+          gross: medianAnnualGrossIncome,
+          roi: medianAnnualGrossIncome / property.price,
           capRate: avgAnnualGrossIncome / property.price,
-          cashFlow: medianAnnualNetIncome - yearlyCosts.totalCosts,
-          yearsTillBreakEven: property.price / (avgAnnualGrossIncome - yearlyCosts.totalCosts),
+          cashFlow: medianAnnualGrossIncome,
+          yearsTillBreakEven: decimals(property.price / medianAnnualGrossIncome),
         }
       };
       return {
@@ -455,7 +454,6 @@ export async function calculateAverageAndMedianRentalPrices(rentalIndex: string,
       };
     });
 
-
   await es.index.deleteIndex(decoratedIndex); // do we want to clear the index before upserting?
   // ... probably not if the upsert is able to properly update the records. . .
   await es.index.upsert(decoratedIndex, {
@@ -468,6 +466,52 @@ export async function calculateAverageAndMedianRentalPrices(rentalIndex: string,
   });
 
   return decoratedProperties;
+}
+
+export function decorateProperties(
+  properties: MergedProperty[],
+  rentalAnalysis: RentalReport = {}
+): DecoratedProperty[] {
+  return properties.map((property) => {
+    const { beds, hoa, price } = property;
+    const report = rentalAnalysis[beds] ?? {};
+    const { avgRent, medianRent } = report;
+
+    const yearlyCosts: YearlyCosts = {
+      tax: decimals(price * YEARLY_TAX_RATE),
+      maintenance: decimals(price * YEARLY_MAINTENANCE_RATE),
+      insurance: decimals(price * YEARLY_PROPERTY_INSURANCE_RATE),
+      hoa: decimals((hoa ?? 0) * MONTHS_IN_YEAR),
+      total: 0,
+    };
+    yearlyCosts.total = decimals(
+      yearlyCosts.tax + yearlyCosts.maintenance + yearlyCosts.insurance + yearlyCosts.hoa
+    );
+
+    const calculateYearlyStats = (annualRent: number): YearlyStats => {
+      const annualNetIncome = decimals(annualRent * MONTHS_IN_YEAR);
+      const annualGrossIncome = decimals(annualNetIncome - yearlyCosts.total);
+      return {
+        net: annualNetIncome,
+        gross: annualGrossIncome,
+        roi: decimals(annualGrossIncome / price),
+        capRate: decimals(annualGrossIncome / price),
+        cashFlow: decimals(annualGrossIncome),
+        breakEvenYears: decimals(price / annualGrossIncome),
+      };
+    };
+
+    const yearlyStats = {
+      avg: calculateYearlyStats(avgRent),
+      median: calculateYearlyStats(medianRent),
+    };
+
+    return {
+      ...property,
+      costs: yearlyCosts,
+      returns: yearlyStats,
+    };
+  });
 }
 
 type ZillowRequestResults = {

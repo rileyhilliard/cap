@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
+import { hasher } from '@utils/helpers';
 import { fileURLToPath } from 'url';
 import logger from '@utils/logger';
 const __filename = fileURLToPath(import.meta.url);
@@ -20,12 +20,8 @@ export class Cache {
     }
   }
 
-  private createHash(string: string): string {
-    return crypto.createHash('sha256').update(string).digest('hex');
-  }
-
   private async hasCache(key: string): Promise<boolean> {
-    const hash = this.createHash(key);
+    const hash = hasher(key);
     const filePath = this.getFilePath(hash);
     if (fs.existsSync(filePath)) {
       const stats = await fs.promises.stat(filePath);
@@ -46,7 +42,7 @@ export class Cache {
     logger.debug(`getting cache for ${key}`);
     const valid = await this.hasCache(key);
     if (valid) {
-      const hash = this.createHash(key);
+      const hash = hasher(key);
       const filePath = this.getFilePath(hash);
       const data = await fs.promises.readFile(filePath, 'utf8');
       logger.debug(`cache for ${key} exists and is valid`);
@@ -65,7 +61,7 @@ export class Cache {
   public async set(key: string, data: any): Promise<void> {
     logger.debug(`SET cache for ${key}`);
     const existingCache = this.get(key) ?? Object.create(null);
-    const hash = this.createHash(key);
+    const hash = hasher(key);
     const filePath = this.getFilePath(hash);
     await fs.promises.writeFile(filePath, JSON.stringify({ ...existingCache, ...data }));
   }

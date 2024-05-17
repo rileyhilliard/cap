@@ -2,5 +2,5 @@
   "watch": ["src"],
   "ext": "ts,js",
   "ignore": ["src/**/*.spec.ts"],
-  "exec": "node --inspect --trace-warnings ../../node_modules/.bin/vite dev"
+  "exec": "node --inspect ../../node_modules/.bin/vite dev"
 }
