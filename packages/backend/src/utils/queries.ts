@@ -1,5 +1,5 @@
-import logger from './logger.js';
-import { ApartmentModel } from '../domains/apartment/apartment.model.js';
+import logger from '@utils/logger';
+import { ApartmentModel } from '@domains/apartment/apartment.model';
 
 export async function calculateAverageAndMedianRentalPrices() {
   logger.debug('Calculating rental prices');

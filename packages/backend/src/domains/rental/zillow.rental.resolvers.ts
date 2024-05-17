@@ -1,6 +1,6 @@
 import { Resolver, Query, Arg, FieldResolver, Root, ID, Mutation } from 'type-graphql';
-import { ZillowRental, ZillowRentalModel, ZillowRentalInput } from './zillow.rental.model.js';
-import logger from '../../utils/logger.js';
+import { ZillowRental, ZillowRentalModel, ZillowRentalInput } from '@domains/rental/zillow.rental.model';
+import logger from '@utils/logger';
 
 export function fetchRental(options: object): Promise<ZillowRental | null> {
   return ZillowRentalModel.findOne(options).exec();
@@ -36,9 +36,13 @@ export default class ZillowRentalResolver {
       query = { _id: { $in: ids } };
     }
 
-    const rentals = await ZillowRentalModel.find(query).exec();
-    logger.debug('rentals', rentals.at(0));
-    return rentals;
+    const _rentals = await ZillowRentalModel.find(query).select('price').exec();
+
+
+    // this is probably close to working
+    // it seems like the values are properly computed, and then a secondary computation 
+    // happens that loses the context of 'this' in the virtuals
+    return _rentals; // _rentals.map(rental => rental.toJSON()); 
   }
 }
 

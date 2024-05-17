@@ -1,4 +1,4 @@
-import BaseModel from '../../utils/base-model.js';
+import BaseModel from '@utils/base-model';
 import { ObjectType, Field } from 'type-graphql';
 import { prop, getModelForClass } from '@typegoose/typegoose';
 

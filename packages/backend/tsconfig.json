@@ -13,7 +13,9 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@backend/*": ["./src/*"]
+      "@backend/*": ["./src/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@domains/*": ["./src/domains/*"]
     },
     "strict": true,
     "forceConsistentCasingInFileNames": true,

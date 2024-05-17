@@ -1,5 +1,5 @@
 import { connect } from 'mongoose';
-import logger from './logger.js';
+import logger from '@utils/logger';
 
 // NOTE: rn this is hard coded to my dev db instance
 const MONGODB_URI = 'mongodb://localhost:27017';  // Use the connection string from either your local MongoDB instance or MongoDB Atlas

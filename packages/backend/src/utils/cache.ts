@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
+import { hasher } from '@utils/helpers';
 import { fileURLToPath } from 'url';
-import logger from './logger.js';
+import logger from '@utils/logger';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.resolve(path.dirname(__filename), '..');
 
@@ -20,12 +20,8 @@ export class Cache {
     }
   }
 
-  private createHash(string: string): string {
-    return crypto.createHash('sha256').update(string).digest('hex');
-  }
-
   private async hasCache(key: string): Promise<boolean> {
-    const hash = this.createHash(key);
+    const hash = hasher(key);
     const filePath = this.getFilePath(hash);
     if (fs.existsSync(filePath)) {
       const stats = await fs.promises.stat(filePath);
@@ -40,17 +36,22 @@ export class Cache {
     return path.join(this.cacheDir, `${hash}.json`);
   }
 
-  public async get(key: string): Promise<any> {
+  public async get(key: string): Promise<unknown> {
     await this.initializeCacheDir();
 
     logger.debug(`getting cache for ${key}`);
     const valid = await this.hasCache(key);
     if (valid) {
-      const hash = this.createHash(key);
+      const hash = hasher(key);
       const filePath = this.getFilePath(hash);
       const data = await fs.promises.readFile(filePath, 'utf8');
       logger.debug(`cache for ${key} exists and is valid`);
-      return JSON.parse(data);
+      try {
+        return JSON.parse(data);
+      } catch (error) {
+        // @ts-ignore
+        logger.error(`Error parsing cache for ${key} @ hash ${hash}: ${error.message}`);
+      }
     }
 
     logger.debug(`cache for ${key} does not exist, or expired`);
@@ -58,11 +59,11 @@ export class Cache {
   }
 
   public async set(key: string, data: any): Promise<void> {
-    await this.initializeCacheDir();
-
-    const hash = this.createHash(key);
+    logger.debug(`SET cache for ${key}`);
+    const existingCache = this.get(key) ?? Object.create(null);
+    const hash = hasher(key);
     const filePath = this.getFilePath(hash);
-    await fs.promises.writeFile(filePath, JSON.stringify(data));
+    await fs.promises.writeFile(filePath, JSON.stringify({ ...existingCache, ...data }));
   }
 
 }

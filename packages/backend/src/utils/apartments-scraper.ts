@@ -1,8 +1,8 @@
-import logger from './logger.js';
+import logger from '@utils/logger';
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { Cache } from './cache.js';
-import { upsertApartments } from '../domains/apartment/apartment.resolvers.js';
-import type { ApartmentInput } from '../domains/apartment/apartment.model.js';
+import { Cache } from '@utils/cache';
+import { upsertApartments } from '@domains/apartment/apartment.resolvers';
+import type { ApartmentInput } from '@domains/apartment/apartment.model';
 
 const cache = new Cache();
 const linkGen = (page: number | undefined | false = false) => `https://www.apartments.com/student-housing/${page ? page + '/' : ''}?bb=uhh93g33qJt18sqe`

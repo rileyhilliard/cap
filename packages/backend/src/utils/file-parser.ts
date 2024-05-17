@@ -1,4 +1,4 @@
-import logger from './logger.js';
+import logger from '@utils/logger';
 import fs from 'fs';
 import { parse } from 'csv-parse';
 

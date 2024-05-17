@@ -1,6 +1,6 @@
 import { Resolver, Query, Arg, FieldResolver, Root, ID, Mutation } from 'type-graphql';
-import { Apartment, ApartmentModel, ApartmentInput } from './apartment.model.js';
-import logger from '../../utils/logger.js';
+import { Apartment, ApartmentModel, ApartmentInput } from '@domains/apartment/apartment.model';
+import logger from '@utils/logger';
 
 export function fetchApartment(options: object): Promise<Apartment | null> {
   return ApartmentModel.findOne(options).exec();
