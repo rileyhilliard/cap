@@ -3,7 +3,7 @@ import { Cache } from '@utils/cache';
 import ElasticSearch from '@utils/elastic-search';
 import fetch from 'node-fetch';
 import { timestamp, normalizeAddress, hasher } from '@utils/helpers';
-import type { RedfinProperty } from '@backend/types/property-types';
+import type { RedfinRental, RedfinProperty, BaseProps } from '@backend/types/property-types';
 const MONTHS_IN_YEAR = 12;
 const YEARLY_TAX_RATE = 0.02;
 const YEARLY_MAINTENANCE_RATE = 0.01;
@@ -17,13 +17,14 @@ const redFinBoundary = 'https://www.redfin.com/stingray/api/gis?al=1&include_nea
 // https://www.redfin.com/stingray/api/gis?al=1&cluster_bounds=-97.75405%2030.27231%2C-97.71079%2030.27231%2C-97.71079%2030.32188%2C-97.75405%2030.32188%2C-97.75405%2030.27231&include_nearby_homes=true&market=austin&mpt=99&num_homes=350&ord=redfin-recommended-asc&page_number=1&sf=1,2,3,5,6,7&start=0&status=9&uipt=1,2,3,4,5,6,7,8&user_poly=-97.737783%2030.280351%2C-97.752374%2030.283835%2C-97.753919%2030.286132%2C-97.753490%2030.289097%2C-97.747739%2030.293321%2C-97.749284%2030.296804%2C-97.746366%2030.301473%2C-97.737697%2030.302881%2C-97.730659%2030.313107%2C-97.723192%2030.311329%2C-97.714094%2030.298583%2C-97.712549%2030.289912%2C-97.719072%2030.284946%2C-97.728427%2030.283093%2C-97.731946%2030.279239%2C-97.737783%2030.280351&v=8&zoomLevel=14
 export interface RedfinOptions {
   url: string;
-  meta: any;
 }
 
 function responseTransformer(response: RedfinPropertyResponse): RedfinProperty[] {
   const date = timestamp();
   const properties = response?.payload?.homes ?? [];
   return properties.map(property => {
+    // alternatePhotosInfo is useless, very very rarely present, and causes elastic search type inference to error
+    if (property.alternatePhotosInfo) delete property.alternatePhotosInfo;
     const address = `${property.streetLine.value}, ${property.city}, ${property.state}, ${property.zip}`;
     return {
       ...property,
@@ -32,7 +33,7 @@ function responseTransformer(response: RedfinPropertyResponse): RedfinProperty[]
         lon: property.latLong.value.longitude,
       },
       address,
-      fingerprint: hasher(normalizeAddress(address)),
+      id: hasher(normalizeAddress(address)),
       url: `https://www.redfin.com${property.url}`,
       hoa: property.hoa?.value ?? 0,
       price: property.price.value,
@@ -76,7 +77,6 @@ export async function scrapeRedfinProperties(index: string, options: RedfinOptio
       es.index.upsert(index, {
         records: processed,
         meta: {
-          ...(options.meta ?? {}),
           url: options.url,
         },
       });
@@ -87,7 +87,6 @@ export async function scrapeRedfinProperties(index: string, options: RedfinOptio
     es.index.upsert(index, {
       records: properties,
       meta: {
-        ...(options.meta ?? {}),
         url: options.url,
       },
     });
@@ -97,57 +96,40 @@ export async function scrapeRedfinProperties(index: string, options: RedfinOptio
   }
 }
 
-function rentalResponseTransformer(response) {
+function rentalResponseTransformer(payload: RedfinRentalResponse): RedfinRental[] {
   const date = timestamp();
-  const rentals = response?.homes ?? [];
-  const res = rentals.map(({ homeData, rentalExtension }) => {
+  const rentals = payload?.homes ?? [];
+  const res = rentals.map(({ homeData, rentalExtension }): RedfinRental => {
     const merged = {
       ...homeData,
       ...rentalExtension
-    };
-    const address = `${merged.addressInfo.formattedStreetLine}, ${merged.addressInfo.city}, ${merged.addressInfo.state}, ${merged.addressInfo.zip}`;
-    const formatted = {
-      ...merged,
+    } as MergedHomeRental;
+    const { bedRange, bathRange, sqftRange, rentPriceRange, photosInfo, addressInfo, ...rest } = merged;
+    const address = `${addressInfo?.formattedStreetLine}, ${addressInfo?.city}, ${addressInfo?.state}, ${addressInfo?.zip}`;
+    const formatted: RedfinRental = {
+      ...rest,
       firstListed: merged.lastUpdated,
       lastSeen: date,
       firstSeen: date,
       address,
-      fingerprint: hasher(normalizeAddress(address)),
-      beds: merged.bedRange?.min === merged.bedRange?.max ? merged.bedRange?.min : null,
-      baths: merged.bathRange?.min === merged.bathRange?.max ? merged.bathRange?.min : null,
-      sqft: merged.sqftRange?.min === merged.sqftRange?.max ? merged.sqftRange?.min : null,
-      price: merged.rentPriceRange?.min === merged.rentPriceRange?.max ? merged.rentPriceRange?.min : null,
+      id: hasher(normalizeAddress(address)),
+      beds: bedRange?.min === bedRange?.max ? bedRange?.min : undefined,
+      baths: bathRange?.min === bathRange?.max ? bathRange?.min : undefined,
+      sqft: sqftRange?.min === sqftRange?.max ? sqftRange?.min : undefined,
+      price: (rentPriceRange?.min === rentPriceRange?.max ? rentPriceRange?.min : 0) ?? 0,
       url: `https://www.redfin.com${merged.url}`,
       latLong: {
-        lat: merged.addressInfo.centroid.latitude,
-        lon: merged.addressInfo.centroid.longitude,
+        lat: addressInfo?.centroid?.centroid?.latitude,
+        lon: addressInfo?.centroid?.centroid?.longitude,
       }
     };
-
-    if (!Number.isNaN(formatted.beds)) {
-      delete formatted.bedRange;
-    }
-    if (!Number.isNaN(formatted.baths)) {
-      delete formatted.bathRange;
-    }
-
-    if (!Number.isNaN(formatted.sqft)) {
-      delete formatted.sqftRange;
-    }
-
-    if (!Number.isNaN(formatted.price)) {
-      delete formatted.rentPriceRange;
-    }
-
-    delete formatted.photosInfo;
-    delete formatted.addressInfo;
     return formatted;
   });
 
   return res;
 }
 //https://www.redfin.com/stingray/api/v1/search/rentals?al=1&includeKeyFacts=true&isRentals=true&market=austin&num_homes=350&ord=days-on-redfin-desc&page_number=1&poly=-97.75584%2030.27237%2C-97.7155%2030.27237%2C-97.7155%2030.32195%2C-97.75584%2030.32195%2C-97.75584%2030.27237&sf=1,2,3,5,6,7&start=0&status=9&uipt=1,2,3,4&use_max_pins=true&user_poly=-97.735345%2030.279787%2C-97.753112%2030.284753%2C-97.752768%2030.289719%2C-97.747618%2030.292609%2C-97.748820%2030.297204%2C-97.746073%2030.300909%2C-97.740580%2030.300465%2C-97.737919%2030.301799%2C-97.731654%2030.312024%2C-97.719723%2030.308838%2C-97.712685%2030.297945%2C-97.712256%2030.292609%2C-97.717835%2030.285494%2C-97.721011%2030.284605%2C-97.725131%2030.286309%2C-97.731225%2030.278972%2C-97.735345%2030.279787&v=8&zoomLevel=14
-export async function scrapeRedfinRentals(index: string, options: RedfinOptions): Promise<RedfinProperty[]> {
+export async function scrapeRedfinRentals(index: string, options: RedfinOptions): Promise<RedfinRental[]> {
   const es = ElasticSearch.getInstance();
   const meta = await es.data.metadata(index);
   const URL = meta?.url || options?.url;
@@ -157,22 +139,9 @@ export async function scrapeRedfinRentals(index: string, options: RedfinOptions)
   }
 
   try {
-    // const esData = await es.data.get(index);
-    // if (esData) {
-    //   return esData;
-    // }
-    const cachedData: any = await cache.get(URL);
+    const cachedData = await cache.get(URL) as RedfinRentalResponse | undefined;
     if (cachedData) {
-      await es.index.deleteIndex(index);
-      const processed = rentalResponseTransformer(cachedData);
-      // es.index.upsert(index, {
-      //   records: processed,
-      //   meta: {
-      //     ...(options.meta ?? {}),
-      //     url: options.url,
-      //   },
-      // });
-      return processed as RedfinProperty[];
+      return rentalResponseTransformer(cachedData);
     }
 
     const properties = await fetchProperties(URL, true);
@@ -183,13 +152,13 @@ export async function scrapeRedfinRentals(index: string, options: RedfinOptions)
         url: options.url,
       },
     });
-    return properties;
+    return properties as RedfinRental[];
   } catch (error) {
     return error;
   }
 }
 
-async function fetchProperties(url: string, isRental: boolean): Promise<RedfinProperty[]> {
+async function fetchProperties(url: string, isRental: boolean): Promise<RedfinProperty[] | RedfinRental[]> {
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -205,7 +174,7 @@ async function fetchProperties(url: string, isRental: boolean): Promise<RedfinPr
     });
 
     const text = await response.text();
-    const cleaned = JSON.parse(isRental ? text : text.replace('{}&&{"', '{"')) as RedfinPropertyResponse;
+    const cleaned = JSON.parse(isRental ? text : text.replace('{}&&{"', '{"'));
     cache.set(url, cleaned);
     return isRental ? rentalResponseTransformer(cleaned) : responseTransformer(cleaned);
   } catch (error) {
@@ -340,7 +309,7 @@ export interface Sash {
   lastSalePrice: string;
 }
 
-export interface RedfinHome {
+export interface RedfinHome extends BaseProps {
   mlsId: {
     label: string;
     value: string;
@@ -401,6 +370,7 @@ export interface RedfinHome {
   buildingId: number;
   isShortlisted: boolean;
   isViewedListing: boolean;
+  alternatePhotosInfo?: unknown;
 }
 
 export interface Address {
@@ -451,4 +421,92 @@ export interface RedfinPropertyResponse {
   errorMessage: string;
   resultCode: number;
   payload: Payload;
+}
+
+
+//// 
+interface AddressInfo {
+  centroid: {
+    centroid: LatLong;
+  }
+  formattedStreetLine: string;
+  city: string;
+  state: string;
+  zip: string;
+  unitNumber?: string;
+  streetlineDisplayLevel: number;
+  unitNumberDisplayLevel: number;
+  locationDisplayLevel: number;
+  countryCode: number;
+  postalCodeDisplayLevel: number;
+}
+
+interface PhotoRange {
+  startPos: number;
+  endPos: number;
+  version: string;
+}
+
+interface PhotosInfo {
+  photoRanges: PhotoRange[];
+}
+
+interface HomeData {
+  propertyId: string;
+  url: string;
+  propertyType: number;
+  photosInfo?: PhotosInfo;
+  staticMapUrl: string;
+  hasAttFiber: boolean;
+  addressInfo?: AddressInfo;
+}
+
+interface ValueRange {
+  min: number;
+  max: number;
+}
+
+interface KeyFact {
+  description: string;
+  rank: number;
+}
+
+interface RentalExtension {
+  rentalId: string;
+  bedRange?: ValueRange;
+  bathRange?: ValueRange;
+  sqftRange?: ValueRange;
+  rentPriceRange?: ValueRange;
+  lastUpdated: string;
+  numAvailableUnits: number;
+  status: number;
+  rentalDetailsPageType: number;
+  searchRankScore: number;
+  freshnessTimestamp: string;
+  description: string;
+  feedSourceInternalId: string;
+  homecardAttribution: boolean;
+  mlsId: string;
+  mlsName: string;
+  mlsLogoAccessLevel: number;
+  isCommercialPaid: boolean;
+  feedOriginalSource: string;
+  mlsAgentEmail: string;
+  desktopPhone: string;
+  mobileWebPhone: string;
+  mobileAppPhone: string;
+  keyFacts: KeyFact[];
+}
+
+interface Home {
+  homeData: HomeData;
+  rentalExtension: RentalExtension;
+}
+
+export type MergedHomeRental = Home['homeData'] & Home['rentalExtension'];
+
+interface RedfinRentalResponse {
+  homes: Home[];
+  numMatchedHomes: number;
+  searchMedian?: SearchMedian;
 }

@@ -1,9 +1,12 @@
 import { createLogger, format, transports, Logger } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import util from 'util';
+// import { isDev } from '@utils/helpers';
+// TODO: should the console be suppressed in prod mode?
+// I imagine prod should transport these to an actual log file
+// or something like sentry . . . 
+const isDev = true;
 
-// Check environment mode
-const isDevelopment: boolean = process.env.NODE_ENV !== 'production';
 let lastTimestamp = Date.now();
 
 const durationFormat = format.printf(info => {
@@ -67,7 +70,7 @@ const fileRotateTransport: DailyRotateFile = new DailyRotateFile({
 
 // Logger instance
 const logger: Logger = createLogger({
-  level: isDevelopment ? 'debug' : 'info',
+  level: isDev ? 'debug' : 'info',
   // format: format.combine(
   //   format.errors({ stack: true }),
   //   format.splat(),
@@ -77,15 +80,15 @@ const logger: Logger = createLogger({
   defaultMeta: { service: '@backend' },
   transports: [
     fileRotateTransport,
-    ...(isDevelopment ? [consoleTransport] : [])
+    ...(isDev ? [consoleTransport] : [])
   ],
   exceptionHandlers: [
     new transports.File({ filename: 'logs/exceptions.log' }),
-    ...(isDevelopment ? [consoleTransport] : [])
+    ...(isDev ? [consoleTransport] : [])
   ],
   rejectionHandlers: [
     new transports.File({ filename: 'logs/rejections.log' }),
-    ...(isDevelopment ? [consoleTransport] : [])
+    ...(isDev ? [consoleTransport] : [])
   ],
 });
 

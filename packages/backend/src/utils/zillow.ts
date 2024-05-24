@@ -5,10 +5,10 @@ import { upsertRentals } from '@domains/rental/zillow.rental.resolvers';
 import type { ZillowRentalInput } from '@domains/rental/zillow.rental.model';
 import ElasticSearch, { responseTransformer } from '@utils/elastic-search';
 import fetch from 'node-fetch';
-import { timestamp, normalizeAddress, hasher, decimals } from '@utils/helpers';
+import { timestamp, normalizeAddress, hasher, decimals, stringToNumber } from '@utils/helpers';
 import { analyzeRentalData } from '@utils/market-report';
 import { queries } from '@utils/elastic-search-queries';
-import type { MergedProperty, DecoratedProperty, YearlyCosts, YearlyStats } from '@backend/types/property-types';
+import type { MergedProperty, DecoratedProperty, YearlyCosts, YearlyStats, ZillowRental, ZillowRequestResults, ZillowProperty } from '@backend/types/property-types';
 import type { RentalReport } from '@utils/market-report';
 
 const cache = new Cache();
@@ -63,11 +63,68 @@ const PAYLOAD = {
   isDebugRequest: false
 };
 
-interface ZillowOptions {
+export interface ZillowRentalOptions {
+  payload: {
+    isDebugRequest: boolean;
+    requestId: number;
+    searchQueryState: {
+      filterState: {
+        [key: string]: {
+          value: boolean;
+        };
+      };
+      pagination: {};
+      mapBounds: {
+        east: number;
+        south: number;
+        north: number;
+        west: number;
+      };
+      customRegionId: string;
+      isListVisible: boolean;
+      isMapVisible: boolean;
+      mapZoom: number;
+    };
+    wants: {
+      cat1: string[];
+    };
+  };
+  cookies: string;
   url: string;
-  payload: unknown;
-  cookies: string,
-  meta: any;
+}
+
+export interface ZillowPropertyOptions {
+  payload: {
+    isDebugRequest: boolean;
+    requestId: number;
+    searchQueryState: {
+      filterState: {
+        sortSelection: {
+          value: string;
+        };
+        isAllHomes: {
+          value: boolean;
+        };
+      };
+      pagination: {};
+      mapBounds: {
+        east: number;
+        south: number;
+        north: number;
+        west: number;
+      };
+      customRegionId: string;
+      isListVisible: boolean;
+      isMapVisible: boolean;
+      mapZoom: number;
+    };
+    wants: {
+      cat1: string[];
+      cat2: string[];
+    };
+  };
+  cookies: string;
+  url: string;
 }
 
 async function devCache(index: string): Promise<ZillowRentalInput[]> {
@@ -79,53 +136,9 @@ async function devCache(index: string): Promise<ZillowRentalInput[]> {
 }
 
 
-async function processRentalData(index: string, options: ZillowOptions, data: ZillowRentalInput[]): Promise<void> {
-  const es = ElasticSearch.getInstance();
-  const date = timestamp();
-  const _recs = await es.data.get(index);
-  // filter out records that have unitCount, because those are listings that contain multiple
-  // units so the price data is a range and not accurate / something that can be used for calculating
-  // (they are mega apartment complexes)
-  const allRecords = (_recs?.records ?? []).filter(r => r.unitCount === undefined);
-
-  // Process each record in parallel using Promise.all
-  const computedData = await Promise.all(
-    data.filter(r => r.unitCount === undefined).map((record) => {
-
-      // Extract and parse the price from the record
-      const price = stringToNumber(record.price);
-
-      // Fetch the base record from Elasticsearch
-      let baseRecord = allRecords.find(r => r.address === record.address); // await fetchBaseRecord(es, index, record.address, date);
-      baseRecord = baseRecord ?? {
-        // pastPrices: [],
-        firstSeen: date,
-      };
-
-      // I turned this off in favor of keeping duplicate records
-      // I think Kibana will work better with duplicates
-      // baseRecord = updateBaseRecord(baseRecord, price, date);
-
-      // Merge the base record with the current record and additional fields
-      return mergeRecords(baseRecord, record, price, date);
-    })
-  );
-
-  // Upsert the computed data into Elasticsearch
-  // await es.index.upsert(index, {
-  //   records: computedData,
-  //   meta: {
-  //     ...(options.meta ?? {}),
-  //     url: options.url,
-  //   },
-  // });
-  return computedData;
-}
-
-// Helper function to extract and parse the price from a string
-function stringToNumber(stringNumber: string): number {
-  const _price = parseInt(stringNumber.replace(/\D/g, ''), 10) ?? 0;
-  return isNaN(_price) ? 0 : _price;
+function processRentalData(results: ZillowRequestResults): ZillowRental[] {
+  const data = results?.cat1?.searchResults?.mapResults ?? [];
+  return data.filter(r => r.unitCount === undefined).map(r => mergeRecords(r));
 }
 
 // Helper function to update the base record with new price and date
@@ -137,13 +150,13 @@ function updateBaseRecord(baseRecord: BaseRecord, price: number, date: string): 
 }
 
 // Helper function to merge the base record with the current record and additional fields
-function mergeRecords(baseRecord: BaseRecord, record: ZillowRentalInput, price: number, date: string): ComputedRecord {
+function mergeRecords(record: ZillowRental, preExistingRecord?: BaseRecord): ZillowRental {
+  const date = timestamp();
   return {
-    ...baseRecord,
+    ...(preExistingRecord ?? {}),
     ...record,
-    price,
-    address: record.address,
-    fingerprint: hasher(normalizeAddress(record.address)),
+    price: stringToNumber(record.price),
+    id: hasher(normalizeAddress(record.address)),
     latLong: {
       lat: record.latLong.latitude,
       lon: record.latLong.longitude
@@ -154,7 +167,6 @@ function mergeRecords(baseRecord: BaseRecord, record: ZillowRentalInput, price: 
         record.timeOnZillow ?? 0
       )
     ),
-    decoratedPrice: record.price,
     url: `https://www.zillow.com${record.detailUrl}`,
   };
 }
@@ -175,20 +187,14 @@ interface ComputedRecord extends Omit<ZillowRentalInput, 'price'> {
 }
 
 
-
-// makes a PUT request to 'API_ROOT' with a payload of 'PAYLOAD' using the 'COOKIE' as cookies in the header 
-// and USER_AGENT as the User agent, and returns the response as a JSON object 
-export async function scrapeZillowRentals(index: string, options: ZillowOptions): Promise<any> {
+export async function scrapeZillowRentals(index: string, options: ZillowRentalOptions): Promise<ZillowRental[]> {
   const cachedData = await cache.get(options.url) as ZillowRequestResults;
-  const data = cachedData?.cat1?.searchResults?.mapResults ?? [];
-  if (data?.length) {
-    const results = await processRentalData(index, options, data);
-    return results;
+  if (!!cachedData) {
+    return processRentalData(cachedData);
   }
 
   const es = ElasticSearch.getInstance();
   const meta = await es.data.metadata(index);
-
   if (!meta?.cookies && typeof options.cookies !== 'string') {
     throw new Error('No cookies found in the index metadata. Please pass in a session cookie @ options.cookies');
   }
@@ -203,7 +209,6 @@ export async function scrapeZillowRentals(index: string, options: ZillowOptions)
 
   const cookies = meta?.cookies ?? options.cookies.replace('\"', "");
   const payload = meta?.payload ?? options.payload;
-
   const response = await fetch('https://www.zillow.com/async-create-search-page-state', {
     method: 'PUT',
     headers: {
@@ -222,7 +227,8 @@ export async function scrapeZillowRentals(index: string, options: ZillowOptions)
   try {
     const res = await response.json() as ZillowRequestResults;
     cache.set(options.url, res);
-    return processRentalData(index, options, (res?.cat1?.searchResults?.mapResults ?? []));
+    const records = processRentalData(res);
+    return records;
   } catch (error) {
     const text = await response.text();
     logger.error(error);
@@ -254,7 +260,7 @@ export async function scrapeZillowRentals(index: string, options: ZillowOptions)
 
 
 
-async function processListingData(index: string, options: ZillowOptions, data: ZillowRentalInput[], enabled: boolean): Promise<void> {
+async function processListingData(index: string, options: ZillowPropertyOptions, data: ZillowRental[]): Promise<ZillowProperty[]> {
   const es = ElasticSearch.getInstance();
   const date = timestamp();
   const _recs = await es.data.get(index);
@@ -289,34 +295,23 @@ async function processListingData(index: string, options: ZillowOptions, data: Z
         firstListed: timestamp(+new Date(date) - (record.timeOnZillow ?? 0)),
         decoratedPrice: record.price,
         url: `https://www.zillow.com${record.detailUrl}`,
-        fingerprint: hasher(normalizeAddress(record.address)),
+        id: hasher(normalizeAddress(record.address)),
       };
 
       return decoratedRecord;
     })
   );
 
-  if (enabled) {
-    // Upsert the computed data into Elasticsearch
-    await es.index.upsert(index, {
-      records: computedData,
-      meta: {
-        ...(options.meta ?? {}),
-        url: options.url,
-      },
-    });
-  }
-
   return computedData;
 }
 
-export async function scrapeZillowProperties(index: string, options: ZillowOptions): Promise<any> {
+export async function scrapeZillowProperties(index: string, options: ZillowPropertyOptions): Promise<ZillowProperty[]> {
   const cachedData = await cache.get(options.url) as ZillowRequestResults;
   const data = cachedData?.cat1?.searchResults?.mapResults ?? [];
   if (data?.length) {
     logger.debug('Returning dev cache becase its been less than a week since the last PUT attempt.');
     // DB mutation disabled rn
-    return processListingData(index, options, data, false);
+    return processListingData(index, options, data);
   }
 
   const es = ElasticSearch.getInstance();
@@ -454,17 +449,6 @@ export async function calculateAverageAndMedianRentalPrices(rentalIndex: string,
       };
     });
 
-  await es.index.deleteIndex(decoratedIndex); // do we want to clear the index before upserting?
-  // ... probably not if the upsert is able to properly update the records. . .
-  await es.index.upsert(decoratedIndex, {
-    records: decoratedProperties,
-    meta: {
-      rentalIndex,
-      propertyIndex,
-      rentalAnalysis
-    },
-  });
-
   return decoratedProperties;
 }
 
@@ -475,7 +459,7 @@ export function decorateProperties(
   return properties.map((property) => {
     const { beds, hoa, price } = property;
     const report = rentalAnalysis[beds] ?? {};
-    const { avgRent, medianRent } = report;
+    const { avgRent = 0, medianRent = 0 } = report;
 
     const yearlyCosts: YearlyCosts = {
       tax: decimals(price * YEARLY_TAX_RATE),
@@ -488,8 +472,8 @@ export function decorateProperties(
       yearlyCosts.tax + yearlyCosts.maintenance + yearlyCosts.insurance + yearlyCosts.hoa
     );
 
-    const calculateYearlyStats = (annualRent: number): YearlyStats => {
-      const annualNetIncome = decimals(annualRent * MONTHS_IN_YEAR);
+    const calculateYearlyStats = (monthlyRent: number): YearlyStats => {
+      const annualNetIncome = decimals(monthlyRent * MONTHS_IN_YEAR);
       const annualGrossIncome = decimals(annualNetIncome - yearlyCosts.total);
       return {
         net: annualNetIncome,
@@ -508,16 +492,10 @@ export function decorateProperties(
 
     return {
       ...property,
+      avgRent,
+      medianRent,
       costs: yearlyCosts,
       returns: yearlyStats,
     };
   });
 }
-
-type ZillowRequestResults = {
-  cat1?: {
-    searchResults?: {
-      mapResults?: ZillowRentalInput[];
-    };
-  };
-};

@@ -131,7 +131,7 @@ export async function analyzeRentalData(index: string): Promise<Results> {
 }
 
 
-export async function generateRentalReport(index: string, properties: MergedProperty[]): Promise<RentalReport> {
+export function generateRentalReport(index: string, properties: MergedProperty[]): RentalReport {
   const date = timestamp();
   const BASE_STAT = {
     index,
