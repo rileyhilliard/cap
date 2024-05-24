@@ -1,5 +1,105 @@
 import { Client, estypes, } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
+import { isValidUrl, getServeArg, isDev } from '@utils/helpers';
+
+
+// Left off @: there are still records being dropped, though not many
+// capture failed records and log them, or surface them somewhere so 
+// we can see what prop is getting typed incorrectly
+function inferElasticsearchFieldType(value: any): string {
+  if (typeof value === 'number') {
+    if (Number.isInteger(value) && value !== 0) {
+      if (value > 1000000000 || value < -1000000000) {
+        return 'long';
+      } else {
+        return 'integer';
+      }
+    } else {
+      return 'float';
+    }
+  } else if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
+      return 'date';
+    }
+    if (isValidUrl(value)) {
+      return 'keyword';
+    }
+    return 'text';
+  } else if (typeof value === 'boolean') {
+    return 'boolean';
+  } else if (Array.isArray(value)) {
+    return 'nested';
+  } else if (value instanceof Date) {
+    return 'date';
+  } else if (typeof value === 'object') {
+    return 'object';
+  } else {
+    return 'text';
+  }
+}
+
+function generateSchemaFromRecords(records: any[]): any {
+  const schema: any = {};
+
+  for (const record of records) {
+    for (const key in record) {
+      if (record.hasOwnProperty(key)) {
+        const value = record[key];
+
+        if (!schema[key]) {
+          schema[key] = {
+            type: inferElasticsearchFieldType(value),
+            properties: typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date) ? {} : undefined
+          };
+        }
+
+        if (typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date)) {
+          if (!schema[key].properties) {
+            schema[key].properties = {};
+          }
+          const nestedSchema = generateSchemaFromRecords([value]);
+          mergeSchemas(schema[key].properties, nestedSchema);
+        } else {
+          const inferredType = inferElasticsearchFieldType(value);
+          if (schema[key].type !== inferredType) {
+            if (schema[key].type === 'integer' && inferredType === 'float') {
+              schema[key].type = 'float';
+            } else if (schema[key].type === 'float' && inferredType === 'integer') {
+              // Keep the type as 'float'
+            } else {
+              schema[key].type = 'text'; // Fallback to 'text' if types are incompatible
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return schema;
+}
+
+function mergeSchemas(schema1: any, schema2: any): void {
+  for (const key in schema2) {
+    if (schema2.hasOwnProperty(key)) {
+      if (!schema1[key]) {
+        schema1[key] = schema2[key];
+      } else if (schema1[key].type !== schema2[key].type) {
+        if (schema1[key].type === 'integer' && schema2[key].type === 'float') {
+          schema1[key].type = 'float';
+        } else if (schema1[key].type === 'float' && schema2[key].type === 'integer') {
+          // Keep the type as 'float'
+        } else {
+          schema1[key].type = 'text'; // Fallback to 'text' if types are incompatible
+        }
+      }
+
+      if (schema1[key].properties && schema2[key].properties) {
+        mergeSchemas(schema1[key].properties, schema2[key].properties);
+      }
+    }
+  }
+}
+
 
 export function responseTransformer(response: estypes.SearchResponse<unknown, Record<string, estypes.AggregationsAggregate>>) {
   const { hits } = response.hits;
@@ -26,13 +126,24 @@ class ElasticsearchService {
       throw new Error('An ElasticsearchService instance has already been created. Use ElasticsearchService.getInstance() to get its instance');
     }
 
-    logger.debug('elasticsearch: creating client');
-    this.client = new Client({ node: 'http://localhost:9200' });
-    logger.debug('elasticsearch: client created');
+    const suppliedHost = getServeArg('--elastic');
+    const devLocalHost = 'http://localhost:9200';
+    const devRemoteHost = 'http://dev.elastic.opnhub.ai';
+    const prodRemoteHost = 'http://elastic.opnhub.ai';
+    const defaultProdLocalHost = 'http://localhost:9200';
+
+    if (!isDev && !suppliedHost) {
+      logger.warn(`elasticsearch: production served with no --elastic flag specifying where elastic search is hosted. Expected something like --elastic=${devLocalHost}. Falling back to ${defaultProdLocalHost}`);
+    }
+
+    const host = suppliedHost ||
+      isDev ? devLocalHost : defaultProdLocalHost;
+    this.client = new Client({ node: host });
   }
 
   public static getInstance(): ElasticsearchService {
     if (!ElasticsearchService.instance) {
+      logger.info('Creating elastic search client');
       ElasticsearchService.instance = new ElasticsearchService();
     }
     return ElasticsearchService.instance;
@@ -81,19 +192,28 @@ class ElasticsearchService {
   };
 
   public index = {
-    create: async (indexName: string): Promise<void> => {
+    create: async (indexName: string, records?: unknown[], _options?: { inferTypes: boolean }): Promise<void> => {
+      const options = _options ?? { inferTypes: true };
       logger.debug(`Index ${indexName} creating index`);
       try {
         const indexExists = await this.client.indices.exists({ index: indexName });
 
         if (!indexExists) {
-          await this.client.indices.create({
+          // NOTE the inferrence here is probably close, but copilot was off by something specific
+
+          const schema = options.inferTypes && records && generateSchemaFromRecords(records);
+          const result = await this.client.indices.create({
             index: indexName,
             body: {
               settings: {
                 number_of_shards: 1,
                 number_of_replicas: 1
-              }
+              },
+              ...(schema ? {
+                mappings: {
+                  properties: schema
+                }
+              } : {})
             }
           });
           logger.debug(`Index ${indexName}: Index created`);
@@ -103,11 +223,12 @@ class ElasticsearchService {
       }
     },
 
-    upsert: async (indexName: string, dataset: DatasetSchema): Promise<estypes.BulkResponse[] | undefined> => {
+    upsert: async (indexName: string, dataset: DatasetSchema, _options?: { inferTypes: boolean }): Promise<estypes.BulkResponse[] | undefined> => {
+      const options = _options ?? { inferTypes: true };
       this.validate.dataset(dataset);
 
       // try to create an index in case it doesn't exist
-      await this.index.create(indexName);
+      await this.index.create(indexName, dataset.records, options);
 
       const { meta, records } = dataset;
 
@@ -155,7 +276,13 @@ class ElasticsearchService {
         }
 
         const results = await Promise.all(responses);
-        logger.debug(`Index ${indexName}: Documents upserted successfully`);
+        if (results[0].errors) {
+          const errs = results[0].items.filter(i => (i?.index ?? i?.update)?.status > 399).map(i => {
+            return new Error((i?.index ?? i?.update)?.error?.reason ?? 'unknown')
+          });
+          errs?.forEach(logger.error);
+        }
+
         return results;
       } catch (error) {
         logger.error(`Index ${indexName}: Error upserting documents:`, error);
@@ -183,8 +310,10 @@ class ElasticsearchService {
       try {
         await this.client.indices.delete({ index: indexName });
         logger.debug('Index deleted:', indexName);
-      } catch (error) {
-        console.error('Error deleting index:', error);
+      } catch (error: Error | any) {
+        if (!error?.message?.includes('index_not_found_exception')) {
+          console.error('Error deleting index:', error);
+        }
       }
     },
 
@@ -227,7 +356,6 @@ class ElasticsearchService {
         });
         return meta[indexName]?.mappings?._meta ?? {};
       } catch (error) {
-        logger.error(`Index ${indexName}: Error fetching metadata:`, error);
         return {};
       }
     },
@@ -332,11 +460,10 @@ class ElasticsearchService {
           response,
         };
       } catch (error) {
-        logger.error(`Index ${indexName}: Error fetching data:`, error);
         if (error.message.includes('index_not_found_exception')) {
           return undefined // { ...error.meta.body, message: error.message };
         }
-
+        logger.error(`Index ${indexName}: Error fetching data:`, error);
         throw error;
       }
     },

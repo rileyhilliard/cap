@@ -9,7 +9,10 @@
     "compile": "tsc --incremental",
     "watch": "yarn run compile --watch",
     "elasticsearch:start": "docker-compose -f ../dockers/docker-compose.yml up -d",
-    "dev": "yarn elasticsearch:start && yarn nodemon"
+    "dev": "yarn elasticsearch:start && yarn nodemon",
+    "build": "yarn vite build --mode production",
+    "serve": "node ./dist/server.prod.js --port 3030 --elastic 'http://localhost:9200'",
+    "build:serve": "yarn build && yarn serve"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +24,8 @@
     "express": "^4.19.2",
     "graphql": "^16.8.1",
     "mongoose": "^8.3.3",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "node-schedule": "^2.1.1"
   },
   "devDependencies": {
     "@elastic/elasticsearch": "^8.13.1",
