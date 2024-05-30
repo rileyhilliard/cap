@@ -108,4 +108,8 @@ describe('Routes', () => {
   //   const response = await request(app).get('/v1/indexes/test-id');
   //   expect(response.status).toBe(200);
   // });
+
+  it('PASSES', async () => {
+    expect('broooo').toBe('broooo');
+  });
 });

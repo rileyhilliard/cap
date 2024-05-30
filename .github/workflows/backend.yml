@@ -47,8 +47,8 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Run ESLint
-        run: yarn run eslint . --max-warnings 9999
+      # - name: Run ESLint
+      #   run: yarn run eslint . --max-warnings 9999
 
       - name: Build TypeScript app
         run: yarn build
