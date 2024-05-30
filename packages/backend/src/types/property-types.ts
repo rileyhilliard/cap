@@ -227,7 +227,11 @@ interface ValueLevel<T> {
   max: T;
 }
 
-export interface RedfinRental extends Omit<MergedHomeRental, 'price' | 'latLong' | 'bedRange' | 'bathRange' | 'sqftRange' | 'rentPriceRange' | 'photosInfo' | 'addressInfo'> {
+export interface RedfinRental
+  extends Omit<
+    MergedHomeRental,
+    'price' | 'latLong' | 'bedRange' | 'bathRange' | 'sqftRange' | 'rentPriceRange' | 'photosInfo' | 'addressInfo'
+  > {
   lastSeen: string;
   firstSeen: string;
   address: string;
@@ -240,7 +244,6 @@ export interface RedfinRental extends Omit<MergedHomeRental, 'price' | 'latLong'
   latLong: LatLong;
   firstListed: string;
 }
-
 
 interface VariableData {
   type: string;

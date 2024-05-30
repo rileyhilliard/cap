@@ -5,7 +5,14 @@ import ElasticSearch from '@utils/elastic-search';
 import { generateRentalReport } from '@utils/market-report';
 import { mergeRecords, timestamp, hasher } from '@utils/helpers';
 import type { ZillowRentalOptions, ZillowPropertyOptions } from '@utils/zillow';
-import type { ZillowRental, RedfinRental, RedfinProperty, DecoratedProperty, ZillowProperty, MergedProperty } from '@backend/types/property-types';
+import type {
+  ZillowRental,
+  RedfinRental,
+  RedfinProperty,
+  DecoratedProperty,
+  ZillowProperty,
+  MergedProperty,
+} from '@backend/types/property-types';
 import type { RedfinOptions } from '@utils/redfin';
 import type { RentalReport } from '@utils/market-report';
 
@@ -16,26 +23,36 @@ const snakeCase = (...args: string[]) => args.filter(Boolean).join('_');
 
 const getZillowPropertyConfig = (config: any) => ({
   ...config,
-  url: config.url.replace('for_rent', 'for_sale').replace(/("filterState").*/, '"filterState":{"ah":{"value":true},"sort":{"value":"globalrelevanceex"}},"isListVisible":true}'),
+  url: config.url
+    .replace('for_rent', 'for_sale')
+    .replace(
+      /("filterState").*/,
+      '"filterState":{"ah":{"value":true},"sort":{"value":"globalrelevanceex"}},"isListVisible":true}',
+    ),
   payload: {
     ...config.payload,
     searchQueryState: {
       ...config.payload.searchQueryState,
       filterState: {
-        "sortSelection": { "value": "globalrelevanceex" },
-        "isAllHomes": { "value": true }
-      }
+        sortSelection: { value: 'globalrelevanceex' },
+        isAllHomes: { value: true },
+      },
     },
     wants: {
       ...config.payload.wants,
-      cat2: ["total"]
-    }
-  }
+      cat2: ['total'],
+    },
+  },
 });
 
 const getRedfinPropertyConfig = (config: any) => ({
   ...config,
-  url: config.url.replace('v1/search/rentals', 'gis').replace(/includeKeyFacts.*poly=/, 'include_nearby_homes=true&market=austin&mpt=99&num_homes=350&ord=redfin-recommended-asc&page_number=1&poly='),
+  url: config.url
+    .replace('v1/search/rentals', 'gis')
+    .replace(
+      /includeKeyFacts.*poly=/,
+      'include_nearby_homes=true&market=austin&mpt=99&num_homes=350&ord=redfin-recommended-asc&page_number=1&poly=',
+    ),
 });
 
 export const getIndexNames = (regionId: string) => ({
@@ -45,7 +62,7 @@ export const getIndexNames = (regionId: string) => ({
   ZILLOW_PROPERTIES_INDEX: snakeCase(regionId, PROPERTIES_PREFIX, 'zillow'),
   REDFIN_RENTALS_INDEX: snakeCase(regionId, RENTALS_PREFIX, 'redfin'),
   REDFIN_PROPERTIES_INDEX: snakeCase(regionId, PROPERTIES_PREFIX, 'redfin'),
-  RENTAL_REPORT_INDEX: snakeCase(regionId, RENTALS_PREFIX, 'report')
+  RENTAL_REPORT_INDEX: snakeCase(regionId, RENTALS_PREFIX, 'report'),
 });
 
 export const getBaseMeta = (regionId: string, zillow: any, redfin: any, indexes: ReturnType<typeof getIndexNames>) => ({
@@ -53,22 +70,27 @@ export const getBaseMeta = (regionId: string, zillow: any, redfin: any, indexes:
   region: regionId,
   zillow: {
     rentals: zillow,
-    properties: getZillowPropertyConfig(zillow)
+    properties: getZillowPropertyConfig(zillow),
   },
   redfin: {
     rentals: redfin,
-    properties: getRedfinPropertyConfig(redfin)
+    properties: getRedfinPropertyConfig(redfin),
   },
-  relatedIndexes: Object.values(indexes)
+  relatedIndexes: Object.values(indexes),
 });
 
-const scrapeData = async (indexes: ReturnType<typeof getIndexNames>, zillow: RegionConfig['zillow'], redfin: RegionConfig['redfin']): Promise<BulkScrapedData> => {
-  const [zillowRentalResults, redfinRentalResults, zillowPropertiesResults, redfinPropertiesResults] = await Promise.all([
-    scrapeZillowRentals(indexes.ZILLOW_RENTALS_INDEX, zillow.rentals),
-    scrapeRedfinRentals(indexes.REDFIN_RENTALS_INDEX, redfin.rentals),
-    scrapeZillowProperties(indexes.ZILLOW_PROPERTIES_INDEX, getZillowPropertyConfig(zillow.properties)),
-    scrapeRedfinProperties(indexes.REDFIN_PROPERTIES_INDEX, getRedfinPropertyConfig(redfin.properties))
-  ]);
+const scrapeData = async (
+  indexes: ReturnType<typeof getIndexNames>,
+  zillow: RegionConfig['zillow'],
+  redfin: RegionConfig['redfin'],
+): Promise<BulkScrapedData> => {
+  const [zillowRentalResults, redfinRentalResults, zillowPropertiesResults, redfinPropertiesResults] =
+    await Promise.all([
+      scrapeZillowRentals(indexes.ZILLOW_RENTALS_INDEX, zillow.rentals),
+      scrapeRedfinRentals(indexes.REDFIN_RENTALS_INDEX, redfin.rentals),
+      scrapeZillowProperties(indexes.ZILLOW_PROPERTIES_INDEX, getZillowPropertyConfig(zillow.properties)),
+      scrapeRedfinProperties(indexes.REDFIN_PROPERTIES_INDEX, getRedfinPropertyConfig(redfin.properties)),
+    ]);
 
   return { zillowRentalResults, redfinRentalResults, zillowPropertiesResults, redfinPropertiesResults };
 };
@@ -84,16 +106,33 @@ const processData = (scrapedData: BulkScrapedData, indexes: ReturnType<typeof ge
   return { combinedRentals, rentalReport, decoratedProperties };
 };
 
-const getIndexData = (processedData: ProcessedData, scrapedData: BulkScrapedData, indexes: ReturnType<typeof getIndexNames>, baseMeta: RegionConfig) => {
+const getIndexData = (
+  processedData: ProcessedData,
+  scrapedData: BulkScrapedData,
+  indexes: ReturnType<typeof getIndexNames>,
+  baseMeta: RegionConfig,
+) => {
   const meta = { ...baseMeta };
   return [
     { index: indexes.REDFIN_RENTALS_INDEX, records: scrapedData.redfinRentalResults, meta: meta.redfin.rentals },
     { index: indexes.ZILLOW_RENTALS_INDEX, records: scrapedData.zillowRentalResults, meta: meta.zillow.rentals },
     { index: indexes.RENTAL_REPORT_INDEX, records: [processedData.rentalReport], meta },
-    { index: indexes.REDFIN_PROPERTIES_INDEX, records: scrapedData.redfinPropertiesResults, meta: meta.redfin.properties },
-    { index: indexes.ZILLOW_PROPERTIES_INDEX, records: scrapedData.zillowPropertiesResults, meta: meta.zillow.properties },
+    {
+      index: indexes.REDFIN_PROPERTIES_INDEX,
+      records: scrapedData.redfinPropertiesResults,
+      meta: meta.redfin.properties,
+    },
+    {
+      index: indexes.ZILLOW_PROPERTIES_INDEX,
+      records: scrapedData.zillowPropertiesResults,
+      meta: meta.zillow.properties,
+    },
     { index: indexes.COMBINED_RENTALS_INDEX, records: processedData.combinedRentals },
-    { index: indexes.COMBINED_PROPERTIES_INDEX, records: processedData.decoratedProperties, meta: { ...meta, rentalReport: processedData.rentalReport } },
+    {
+      index: indexes.COMBINED_PROPERTIES_INDEX,
+      records: processedData.decoratedProperties,
+      meta: { ...meta, rentalReport: processedData.rentalReport },
+    },
   ];
 };
 
@@ -111,31 +150,29 @@ export const updateRegionsIndex = async (regionId: string, options: any) => {
   const indexes = getIndexNames(regionId);
   const baseMeta = getBaseMeta(regionId, zillow, redfin, indexes);
   const payload = {
-    records: [{
-      ...baseMeta,
-      region: regionId,
-      id: hasher(regionId),
-    }],
+    records: [
+      {
+        ...baseMeta,
+        region: regionId,
+        id: hasher(regionId),
+      },
+    ],
     meta: {
       lastRan: timestamp,
-    }
+    },
   };
 
-  await es.index.upsert(
-    'registered_indexes',
-    payload,
-    { inferTypes: false }
-  );
-}
+  await es.index.upsert('registered_indexes', payload, { inferTypes: false });
+};
 
 async function getRegionConfig(regionId: string): Promise<RegionConfig> {
   const es = ElasticSearch.getInstance();
   const result = await es.data.query('registered_indexes', {
     query: {
       term: {
-        _id: hasher(regionId)
-      }
-    }
+        _id: hasher(regionId),
+      },
+    },
   });
 
   return result.hits.hits.at(0)?._source as RegionConfig;
@@ -175,7 +212,7 @@ interface BulkScrapedData {
   zillowRentalResults: ZillowRental[];
   redfinRentalResults: RedfinRental[];
   zillowPropertiesResults: ZillowProperty[];
-  redfinPropertiesResults: RedfinProperty[]
+  redfinPropertiesResults: RedfinProperty[];
 }
 
 interface ProcessedData {

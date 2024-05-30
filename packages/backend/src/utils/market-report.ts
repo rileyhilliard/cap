@@ -4,7 +4,6 @@ import { queries } from '@utils/elastic-search-queries';
 import { median, percentile, decimals } from '@utils/helpers';
 import type { MergedProperty } from '@backend/types/property-types';
 
-
 interface Property {
   price: number;
   beds: number;
@@ -24,14 +23,14 @@ interface Stat {
   avgRentPerSqft: number;
   medianRentPerSqft: number;
   rentPercentiles: {
-    "25th": number;
-    "50th": number;
-    "90th": number;
+    '25th': number;
+    '50th': number;
+    '90th': number;
   };
   rentPerSqftPercentiles: {
-    "25th": number;
-    "50th": number;
-    "90th": number;
+    '25th': number;
+    '50th': number;
+    '90th': number;
   };
 }
 
@@ -52,21 +51,21 @@ export async function analyzeRentalData(index: string): Promise<Results> {
     total: {
       index,
       date,
-      type: "total",
-      description: "All properties over the given timespan, regulardless of bedroom count",
+      type: 'total',
+      description: 'All properties over the given timespan, regulardless of bedroom count',
       count: 0,
       avgRent: 0,
       medianRent: 0,
       avgRentPerSqft: 0,
       medianRentPerSqft: 0,
-      rentPercentiles: { "25th": 0, "50th": 0, "90th": 0 },
-      rentPerSqftPercentiles: { "25th": 0, "50th": 0, "90th": 0 },
+      rentPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
+      rentPerSqftPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
       rents: [],
-    }
+    },
   };
 
   // Group properties by bedroom count
-  properties.forEach(property => {
+  properties.forEach((property) => {
     const { price, beds } = property;
 
     if (!stats[beds]) {
@@ -82,8 +81,8 @@ export async function analyzeRentalData(index: string): Promise<Results> {
         medianRent: 0,
         avgRentPerSqft: 0,
         medianRentPerSqft: 0,
-        rentPercentiles: { "25th": 0, "50th": 0, "90th": 0 },
-        rentPerSqftPercentiles: { "25th": 0, "50th": 0, "90th": 0 }
+        rentPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
+        rentPerSqftPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
       };
     }
 
@@ -105,8 +104,7 @@ export async function analyzeRentalData(index: string): Promise<Results> {
       return acc;
     }
 
-    const sqftRents = rents?.map((rent, i) => rent / properties[i].area)
-      .filter(p => !isNaN(p)) ?? [];
+    const sqftRents = rents?.map((rent, i) => rent / properties[i].area).filter((p) => !isNaN(p)) ?? [];
 
     const dictionary = stats[bedroom];
     dictionary.avgRent = (rents?.length && decimals(rents.reduce((a, b) => a + b) / count)) ?? 0;
@@ -114,14 +112,14 @@ export async function analyzeRentalData(index: string): Promise<Results> {
     dictionary.avgRentPerSqft = decimals(sqftRents.reduce((a, b) => a + b) / count);
     dictionary.medianRentPerSqft = decimals(median(sqftRents));
     dictionary.rentPercentiles = {
-      "25th": percentile(rents ?? [], 25),
-      "50th": percentile(rents ?? [], 50),
-      "90th": percentile(rents ?? [], 90)
+      '25th': percentile(rents ?? [], 25),
+      '50th': percentile(rents ?? [], 50),
+      '90th': percentile(rents ?? [], 90),
     };
     stats[bedroom].rentPerSqftPercentiles = {
-      "25th": percentile(sqftRents, 25),
-      "50th": percentile(sqftRents, 50),
-      "90th": percentile(sqftRents, 90)
+      '25th': percentile(sqftRents, 25),
+      '50th': percentile(sqftRents, 50),
+      '90th': percentile(sqftRents, 90),
     };
     delete stats[bedroom].rents;
     acc.push(stats[bedroom]);
@@ -129,7 +127,6 @@ export async function analyzeRentalData(index: string): Promise<Results> {
   }, [] as Stat[]);
   return { records: records.sort((a, b) => b.count - a.count) };
 }
-
 
 export function generateRentalReport(index: string, properties: MergedProperty[]): RentalReport {
   const date = timestamp();
@@ -143,8 +140,8 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
     medianRent: 0,
     avgRentPerSqft: 0,
     medianRentPerSqft: 0,
-    rentPercentiles: { "25th": 0, "50th": 0, "90th": 0 },
-    rentPerSqftPercentiles: { "25th": 0, "50th": 0, "90th": 0 },
+    rentPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
+    rentPerSqftPercentiles: { '25th': 0, '50th': 0, '90th': 0 },
     sqFts: [],
     prices: [],
     sqftRents: [],
@@ -152,20 +149,20 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
   const stats: Stats = {
     total: {
       ...structuredClone(BASE_STAT),
-      type: "total",
-      description: "All properties over the given timespan, regardless of bedroom count"
+      type: 'total',
+      description: 'All properties over the given timespan, regardless of bedroom count',
     },
   };
 
   properties.forEach((property) => {
     const { beds, area, price } = property;
-    if (typeof beds !== "number") return;
+    if (typeof beds !== 'number') return;
 
     if (!stats[beds]) {
       stats[beds] = {
         ...structuredClone(BASE_STAT),
-        type: beds === 0 ? "studio" : `${beds}-bedroom`,
-        description: `${beds === 0 ? "Studio" : `${beds} bedroom`} properties`,
+        type: beds === 0 ? 'studio' : `${beds}-bedroom`,
+        description: `${beds === 0 ? 'Studio' : `${beds} bedroom`} properties`,
       };
     }
 
@@ -191,14 +188,14 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
     dictionary.avgRentPerSqft = decimals(sqftRents.reduce((a, b) => a + b, 0) / sqftRents.length);
     dictionary.medianRentPerSqft = decimals(median(sqftRents));
     dictionary.rentPercentiles = {
-      "25th": percentile(prices, 25),
-      "50th": percentile(prices, 50),
-      "90th": percentile(prices, 90),
+      '25th': percentile(prices, 25),
+      '50th': percentile(prices, 50),
+      '90th': percentile(prices, 90),
     };
     dictionary.rentPerSqftPercentiles = {
-      "25th": percentile(sqftRents, 25),
-      "50th": percentile(sqftRents, 50),
-      "90th": percentile(sqftRents, 90),
+      '25th': percentile(sqftRents, 25),
+      '50th': percentile(sqftRents, 50),
+      '90th': percentile(sqftRents, 90),
     };
     delete dictionary.sqFts;
     delete dictionary.prices;
@@ -209,9 +206,9 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
 }
 
 interface Percentiles {
-  "25th": number;
-  "50th": number;
-  "90th": number;
+  '25th': number;
+  '50th': number;
+  '90th': number;
 }
 
 interface BedroomDictionary {
@@ -238,5 +235,5 @@ export interface Stats {
 }
 
 export interface RentalReport {
-  [key: string]: Omit<BedroomDictionary, "sqFts" | "prices" | "sqftRents">;
+  [key: string]: Omit<BedroomDictionary, 'sqFts' | 'prices' | 'sqftRents'>;
 }

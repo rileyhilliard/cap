@@ -12,7 +12,7 @@ async function parseCsvFile(fileContent: string): Promise<any[]> {
     parse(fileContent, { columns: true }, (error, results) => {
       if (error) {
         reject(error);
-        logger.debug('parseCsvFile error', error)
+        logger.debug('parseCsvFile error', error);
       } else {
         resolve(postProcessCsvData(results));
         logger.debug('parseCsvFile complete');
@@ -22,9 +22,9 @@ async function parseCsvFile(fileContent: string): Promise<any[]> {
 }
 
 function postProcessCsvData(data: DataObject[]): DataObject[] {
-  return data.map(obj => {
+  return data.map((obj) => {
     const newObj: DataObject = {};
-    Object.keys(obj).forEach(key => {
+    Object.keys(obj).forEach((key) => {
       if (key !== '') {
         const value = obj[key];
         let parsedValue: string | number | boolean | null = value;
@@ -45,7 +45,8 @@ function postProcessCsvData(data: DataObject[]): DataObject[] {
           }
         }
 
-        const camelCaseKey = key.split(' ')
+        const camelCaseKey = key
+          .split(' ')
           .map((word, index) => {
             if (index === 0) {
               return word.toLowerCase();
@@ -77,7 +78,7 @@ const fileParser = async (filePath: string, ext: string): Promise<unknown> => {
       break;
     case '.csv':
       try {
-        const result = parseCsvFile(fileContents).catch(error => {
+        const result = parseCsvFile(fileContents).catch((error) => {
           console.log('parseCsvFile error');
           return error;
         });
@@ -94,7 +95,6 @@ const fileParser = async (filePath: string, ext: string): Promise<unknown> => {
       throw new Error(`${ext} is not a supported file type`);
   }
 };
-
 
 type DataObject = {
   [key: string]: string | number | boolean | null;

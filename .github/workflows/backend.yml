@@ -1,0 +1,60 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "packages/backend/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "packages/backend/**"
+
+jobs:
+  Build_and_Test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+
+      - name: Setup Node v22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set Yarn version to @stable
+        run: corepack prepare yarn@stable --activate
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+      # NOTE, this probably isnt tuned fully right
+      - uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install
+
+      # - name: Run ESLint
+      #   run: yarn run eslint . --max-warnings 9999
+
+      - name: Build TypeScript app
+        run: yarn build
+
+      - name: Run Vitest tests
+        run: yarn vitest

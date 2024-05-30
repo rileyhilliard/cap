@@ -94,8 +94,10 @@ export async function startCron() {
     const es = ElasticSearch.getInstance();
     const registeredRegions = await es.data.get('registered_indexes');
 
-    const records = registeredRegions?.records ?? [] as RegionData[];
-    logger.info(`Starting cron job execution. Regions ${records.map(({ region }) => region).join(', ')} will be synced.`);
+    const records = registeredRegions?.records ?? ([] as RegionData[]);
+    logger.info(
+      `Starting cron job execution. Regions ${records.map(({ region }) => region).join(', ')} will be synced.`,
+    );
 
     for (const [index, { region }] of records.entries()) {
       try {
@@ -108,7 +110,7 @@ export async function startCron() {
       if (index < records.length - 1) {
         const delaySeconds = Math.floor(Math.random() * 50) + 10; // Random delay between 10 and 59 seconds
         logger.info(`Waiting ${delaySeconds} seconds before syncing the next region.`);
-        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
       }
     }
   });

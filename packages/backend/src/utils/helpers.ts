@@ -52,7 +52,7 @@ function winsorizeData(numbers: number[], lowerPercentile = 5, upperPercentile =
   const lowerValue = sorted[lowerIndex];
   const upperValue = sorted[upperIndex];
 
-  return numbers.map(num => {
+  return numbers.map((num) => {
     if (num < lowerValue) {
       return lowerValue;
     } else if (num > upperValue) {
@@ -82,7 +82,8 @@ export function decimals(num: number, dec: number = 2) {
 }
 
 export function normalizeAddress(address: string): string {
-  return address.toLowerCase()
+  return address
+    .toLowerCase()
     .replace(/apt|apartment|Unit|unit/, 'apt') // Standardize apartment abbreviation
     .replace(/st|street/, 'street') // Standardize street abbreviation
     .replace(/\s+#/, ' apt ') // Convert '#' to 'apt' for apartment numbers
@@ -97,8 +98,8 @@ export function hasher(string: string): string {
 
 export function mergeRecords(redfin: any, zillow: any[]): MergedProperty[] {
   const redfinDictionary = Object.create(null);
-  redfin.forEach(property => redfinDictionary[property.id] = property);
-  const mergedRecords = zillow.map(property => {
+  redfin.forEach((property) => (redfinDictionary[property.id] = property));
+  const mergedRecords = zillow.map((property) => {
     const redfinProperty = redfinDictionary[property.id];
     if (redfinProperty) {
       const mergedProperty = {
@@ -112,7 +113,7 @@ export function mergeRecords(redfin: any, zillow: any[]): MergedProperty[] {
         redfinFirstListed: redfinProperty.firstListed,
         redfinLastSeen: redfinProperty.lastSeen,
         redfinFirstSeen: redfinProperty.firstSeen,
-        mergedRecords: true
+        mergedRecords: true,
       };
       delete redfinDictionary[property.id];
       return mergedProperty;
@@ -122,13 +123,13 @@ export function mergeRecords(redfin: any, zillow: any[]): MergedProperty[] {
   // for now, purge any listing over 1M
   // .filter(property => property.price < 1000000);
 
-  return mergedRecords.concat(Object.values(redfinDictionary)).sort((a, b) => a.address < b.address ? -1 : 1);
+  return mergedRecords.concat(Object.values(redfinDictionary)).sort((a, b) => (a.address < b.address ? -1 : 1));
 }
 
 export function mergePropertyIndexes(redfin: any[], zillow: any[]): any[] {
   const redfinDictionary = Object.create(null);
-  redfin.forEach(property => redfinDictionary[property.id] = property);
-  const mergedRecords = zillow.map(property => {
+  redfin.forEach((property) => (redfinDictionary[property.id] = property));
+  const mergedRecords = zillow.map((property) => {
     const redfinProperty = redfinDictionary[property.id];
     if (redfinProperty) {
       const mergedProperty = {
@@ -142,7 +143,7 @@ export function mergePropertyIndexes(redfin: any[], zillow: any[]): any[] {
         redfinFirstListed: redfinProperty.firstListed,
         redfinLastSeen: redfinProperty.lastSeen,
         redfinFirstSeen: redfinProperty.firstSeen,
-        mergedRecords: true
+        mergedRecords: true,
       };
       delete redfinDictionary[property.id];
       return mergedProperty;
@@ -150,7 +151,7 @@ export function mergePropertyIndexes(redfin: any[], zillow: any[]): any[] {
     return property;
   });
 
-  return mergedRecords.concat(Object.values(redfinDictionary)).sort((a, b) => a.address < b.address ? -1 : 1);
+  return mergedRecords.concat(Object.values(redfinDictionary)).sort((a, b) => (a.address < b.address ? -1 : 1));
 }
 
 export function getServeArg(arg: string): string | undefined {
@@ -166,7 +167,7 @@ export function getServeArg(arg: string): string | undefined {
 
 export function getServePort(): number {
   // process.env.PORT is set from pm2.config.cjs
-  const pm2PortArg = process.env.PORT
+  const pm2PortArg = process.env.PORT;
   if (pm2PortArg) return pm2PortArg;
 
   let port = 4000; // Default port
