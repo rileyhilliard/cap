@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
   "scripts": {
     "start": "yarn dev",
     "rename:mjs": "./scripts/rename.sh",
@@ -23,10 +27,17 @@
     "docker:ssh": "docker exec -it estate-metrics /bin/bash",
     "logs": "yarn pm2 logs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,js,json,cjs,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
   "dependencies": {
     "@apollo/server": "^4.10.4",
     "@elastic/elasticsearch": "^8.13.1",
@@ -49,10 +60,17 @@
     "@types/multer": "^1.4.11",
     "@types/node": "^20.12.13",
     "@types/winston": "^2.4.4",
+    "@typescript-eslint/eslint-plugin": "^7.11.0",
+    "@typescript-eslint/parser": "^7.11.0",
     "concurrently": "^8.2.2",
     "csv-parse": "^5.5.5",
+    "eslint": "^9.3.0",
+    "eslint-config-prettier": "^9.1.0",
     "graphql-scalars": "^1.23.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.5",
     "nodemon": "^3.1.0",
+    "prettier": "^3.2.5",
     "puppeteer": "^22.7.1",
     "reflect-metadata": "^0.2.2",
     "type-graphql": "2.0.0-rc.1",
