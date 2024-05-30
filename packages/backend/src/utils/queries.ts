@@ -19,24 +19,26 @@ export async function calculateAverageAndMedianRentalPrices() {
           rents: { $push: '$rent.price' },
           count: { $sum: 1 },
         },
-      }
+      },
     ];
 
     const results = await ApartmentModel.aggregate(pipeline);
 
-    const rentStatistics: RentStatistics[] = results.map(group => {
-      const { average, median } = calculateStatistics(group.rents);
-      const beds = group._id === 0 ? 1 : group._id;
-      const averagePricePerBedroom = average / beds;
+    const rentStatistics: RentStatistics[] = results
+      .map((group) => {
+        const { average, median } = calculateStatistics(group.rents);
+        const beds = group._id === 0 ? 1 : group._id;
+        const averagePricePerBedroom = average / beds;
 
-      return {
-        beds: group._id,
-        averagePrice: average,
-        medianPrice: median,
-        averagePricePerBedroom,
-        count: group.count
-      };
-    }).sort((a, b) => a.beds - b.beds);
+        return {
+          beds: group._id,
+          averagePrice: average,
+          medianPrice: median,
+          averagePricePerBedroom,
+          count: group.count,
+        };
+      })
+      .sort((a, b) => a.beds - b.beds);
 
     logger.debug('Calculating rental prices complete 🎉');
     return rentStatistics;
@@ -47,7 +49,7 @@ export async function calculateAverageAndMedianRentalPrices() {
 }
 
 function calculateStatistics(rents: number[]): { average: number; median: number } {
-  const sortedRents = rents.filter(price => price != null).sort((a, b) => a - b);
+  const sortedRents = rents.filter((price) => price != null).sort((a, b) => a - b);
   const total = sortedRents.reduce((acc, val) => acc + val, 0);
   const count = sortedRents.length;
   const average = total / count;

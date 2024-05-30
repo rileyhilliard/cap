@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "rootDirs": ["src"],
     "outDir": "dist",
     "lib": ["ESNext"],
     "target": "ESNext",
@@ -26,5 +25,6 @@
     "removeComments": true,
     "sourceMap": true
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*", "./eslint.config.js", "./pm2.config.cjs"],
+  "exclude": ["**/*.test.ts"]
 }

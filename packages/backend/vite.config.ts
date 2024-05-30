@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import { VitePluginNode } from 'vite-plugin-node';
 import path from 'path';
-import resolve from '@rollup/plugin-node-resolve';
+import excludeDependenciesFromBundle from 'rollup-plugin-exclude-dependencies-from-bundle';
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
 
   return {
@@ -16,13 +16,17 @@ export default defineConfig(({ command, mode }) => {
         appPath: isDev ? './src/server.dev.ts' : './src/server.prod.ts',
         exportName: 'app',
       }),
+      excludeDependenciesFromBundle({
+        peerDependencies: false,
+        exclude: ['**/*.test.ts']
+      }),
     ],
     resolve: {
       alias: {
         '@backend': path.resolve(__dirname, './src'),
         '@utils': path.resolve(__dirname, './src/utils'),
         '@domains': path.resolve(__dirname, './src/domains'),
-        '@types': path.resolve(__dirname, './src/types')
+        '@types': path.resolve(__dirname, './src/types'),
       },
     },
     esbuild: {

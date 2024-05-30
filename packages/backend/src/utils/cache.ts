@@ -27,7 +27,7 @@ export class Cache {
       const stats = await fs.promises.stat(filePath);
       const lastModified = new Date(stats.mtime);
       const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-      return (new Date().getTime() - lastModified.getTime()) <= SEVEN_DAYS;
+      return new Date().getTime() - lastModified.getTime() <= SEVEN_DAYS;
     }
     return false;
   }
@@ -65,5 +65,4 @@ export class Cache {
     const filePath = this.getFilePath(hash);
     await fs.promises.writeFile(filePath, JSON.stringify({ ...existingCache, ...data }));
   }
-
 }

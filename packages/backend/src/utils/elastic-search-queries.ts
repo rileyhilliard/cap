@@ -4,22 +4,22 @@ export const queries = {
     query: {
       range: {
         lastSeen: {
-          gte: "now-30d/d",
-          lte: "now/d"
-        }
-      }
+          gte: 'now-30d/d',
+          lte: 'now/d',
+        },
+      },
     },
     collapse: {
-      field: "address.keyword"
+      field: 'address.keyword',
     },
     sort: [
       {
         lastSeen: {
-          order: "desc"
-        }
-      }
-    ]
-  }
+          order: 'desc',
+        },
+      },
+    ],
+  },
 };
 
 export const aggregations = {
@@ -28,28 +28,26 @@ export const aggregations = {
       [`uniqueBy_${term}`]: {
         terms: {
           field: term,
-          size: count
+          size: count,
         },
         aggs: {
           latest_record: {
             top_hits: {
               size: 1,
               _source: {
-                includes: [
-                  "price"
-                ]
+                includes: ['price'],
               },
               sort: [
                 {
                   lastSeen: {
-                    order: "desc"
-                  }
-                }
-              ]
-            }
-          }
-        }
-      }
+                    order: 'desc',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
     };
-  }
-}
+  },
+};

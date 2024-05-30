@@ -25,19 +25,36 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "22.x"
-          cache: "npm"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set Yarn version
+        run: corepack prepare yarn@stable --activate
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+      - uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install
 
       - name: Run ESLint
-        run: npx eslint .
+        run: yarn run eslint . --max-warnings 9999
 
       - name: Build TypeScript app
-        run: npm run build
+        run: yarn build
 
       - name: Run Vitest tests
-        run: npx vitest run
+        run: yarn vitest
 
       - name: Generate new version
         id: version
@@ -48,16 +65,16 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build . --file Dockerfile --tag my-image-name:${{ steps.version.outputs.RELEASE_VERSION }}
+          docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ steps.version.outputs.RELEASE_VERSION }}
 
-      - name: Deploy to on-prem server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            docker stop my-container || true
-            docker rm my-container || true
-            docker pull my-image-name:${{ steps.version.outputs.RELEASE_VERSION }}
-            docker run -d --name my-container my-image-name:${{ steps.version.outputs.RELEASE_VERSION }}
+      # - name: Deploy to on-prem server
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.HOST }}
+      #     username: ${{ secrets.USERNAME }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     script: |
+      #       docker stop my-container || true
+      #       docker rm my-container || true
+      #       docker pull my-image-name:${{ steps.version.outputs.RELEASE_VERSION }}
+      #       docker run -d --name my-container my-image-name:${{ steps.version.outputs.RELEASE_VERSION }}

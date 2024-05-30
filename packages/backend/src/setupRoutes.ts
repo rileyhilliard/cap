@@ -24,28 +24,27 @@ export function setupRoutes(app: Express): void {
     console.time(`DELETE /v1/regions/${req.params.id}`);
     const { id } = req.params;
     const indexes = getIndexNames(id);
-    const results = await Promise.all(Object.keys(indexes)
-      .map(async (key) => es.index.deleteIndex(indexes[key])));
+    const results = await Promise.all(Object.keys(indexes).map(async (key) => es.index.deleteIndex(indexes[key])));
 
     console.timeEnd(`DELETE /v1/regions/${req.params.id}`);
     return res.json(results);
   });
 
   app.get('/v1/regions', async (req: Request, res: Response) => {
-    const results = await es.data.get('registered_indexes')
+    const results = await es.data.get('registered_indexes');
 
     res.json(results);
   });
 
   app.get('/v1/regions/:id', async (req: Request, res: Response) => {
     const { COMBINED_PROPERTIES_INDEX } = getIndexNames(req.params.id);
-    const results = await es.data.get(COMBINED_PROPERTIES_INDEX)
+    const results = await es.data.get(COMBINED_PROPERTIES_INDEX);
 
     res.json(results);
   });
 
   app.get('/v1/indexes', async (req: Request, res: Response) => {
-    const results = await es.listIndices()
+    const results = await es.listIndices();
 
     res.json(results);
   });

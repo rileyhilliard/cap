@@ -1,10 +1,9 @@
-import { Client, estypes, } from '@elastic/elasticsearch';
+import { Client, estypes } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
 import { isValidUrl, getServeArg, isDev } from '@utils/helpers';
 
-
 // Left off @: there are still records being dropped, though not many
-// capture failed records and log them, or surface them somewhere so 
+// capture failed records and log them, or surface them somewhere so
 // we can see what prop is getting typed incorrectly
 function inferElasticsearchFieldType(value: any): string {
   if (typeof value === 'number') {
@@ -49,7 +48,10 @@ function generateSchemaFromRecords(records: any[]): any {
         if (!schema[key]) {
           schema[key] = {
             type: inferElasticsearchFieldType(value),
-            properties: typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date) ? {} : undefined
+            properties:
+              typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date)
+                ? {}
+                : undefined,
           };
         }
 
@@ -100,8 +102,9 @@ function mergeSchemas(schema1: any, schema2: any): void {
   }
 }
 
-
-export function responseTransformer(response: estypes.SearchResponse<unknown, Record<string, estypes.AggregationsAggregate>>) {
+export function responseTransformer(
+  response: estypes.SearchResponse<unknown, Record<string, estypes.AggregationsAggregate>>,
+) {
   const { hits } = response.hits;
   const length = hits.length;
   const result = new Array(length);
@@ -123,7 +126,9 @@ class ElasticsearchService {
 
   private constructor() {
     if (ElasticsearchService.instance) {
-      throw new Error('An ElasticsearchService instance has already been created. Use ElasticsearchService.getInstance() to get its instance');
+      throw new Error(
+        'An ElasticsearchService instance has already been created. Use ElasticsearchService.getInstance() to get its instance',
+      );
     }
 
     const devLocalHost = 'http://localhost:9200';
@@ -131,7 +136,9 @@ class ElasticsearchService {
     const host = process.env.ELASTIC ?? devLocalHost;
 
     if (!isDev && host === devLocalHost) {
-      logger.error(`elasticsearch: production served with the dev elasticsearch host (${devLocalHost}). It should be something like http://<elasticsearch docker container name>:9200`);
+      logger.error(
+        `elasticsearch: production served with the dev elasticsearch host (${devLocalHost}). It should be something like http://<elasticsearch docker container name>:9200`,
+      );
     }
 
     this.client = new Client({ node: host });
@@ -151,8 +158,8 @@ class ElasticsearchService {
       try {
         const query = {
           bool: {
-            must: [] as Array<{ term: Term; }>
-          }
+            must: [] as Array<{ term: Term }>,
+          },
         };
 
         if (source) {
@@ -166,8 +173,8 @@ class ElasticsearchService {
         const response = await this.client.search({
           index: 'sources',
           body: {
-            query
-          }
+            query,
+          },
         });
 
         logger.debug(`Source ${source} ${dataset}: Source fetched successfully`);
@@ -176,15 +183,17 @@ class ElasticsearchService {
         logger.error(`Source ${source} ${dataset}: Error fetching source:`, error);
         return undefined;
       }
-    }
+    },
   };
 
   public validate = {
     dataset: (dataset: DatasetSchema) => {
       if (!dataset || !dataset.records || !Array.isArray(dataset.records)) {
-        throw new Error('Invalid dataset. A dataset must be at minimum an object with a records field that is an array.');
+        throw new Error(
+          'Invalid dataset. A dataset must be at minimum an object with a records field that is an array.',
+        );
       }
-    }
+    },
   };
 
   public index = {
@@ -203,14 +212,16 @@ class ElasticsearchService {
             body: {
               settings: {
                 number_of_shards: 1,
-                number_of_replicas: 1
+                number_of_replicas: 1,
               },
-              ...(schema ? {
-                mappings: {
-                  properties: schema
-                }
-              } : {})
-            }
+              ...(schema
+                ? {
+                    mappings: {
+                      properties: schema,
+                    },
+                  }
+                : {}),
+            },
           });
           logger.debug(`Index ${indexName}: Index created`);
         }
@@ -219,7 +230,11 @@ class ElasticsearchService {
       }
     },
 
-    upsert: async (indexName: string, dataset: DatasetSchema, _options?: { inferTypes: boolean }): Promise<estypes.BulkResponse[] | undefined> => {
+    upsert: async (
+      indexName: string,
+      dataset: DatasetSchema,
+      _options?: { inferTypes: boolean },
+    ): Promise<estypes.BulkResponse[] | undefined> => {
       const options = _options ?? { inferTypes: true };
       this.validate.dataset(dataset);
 
@@ -240,7 +255,9 @@ class ElasticsearchService {
 
       try {
         const responses: Promise<estypes.BulkResponse>[] = [];
-        logger.debug(`Inserting ${records.length} records in ${Math.ceil(records.length / batchSize)} batches of ${batchSize}`);
+        logger.debug(
+          `Inserting ${records.length} records in ${Math.ceil(records.length / batchSize)} batches of ${batchSize}`,
+        );
         for (let i = 0; i < records.length; i += batchSize) {
           const batch = records.slice(i, i + batchSize);
           const body = [];
@@ -248,22 +265,28 @@ class ElasticsearchService {
           for (const doc of batch) {
             if ('id' in doc) {
               // If the document has an _id, create an UpdateRequest
-              body.push({
-                update: {
-                  _index: indexName,
-                  _id: doc.id,
+              body.push(
+                {
+                  update: {
+                    _index: indexName,
+                    _id: doc.id,
+                  },
                 },
-              }, {
-                doc,
-                doc_as_upsert: true,
-              });
+                {
+                  doc,
+                  doc_as_upsert: true,
+                },
+              );
             } else {
               // If no document with the same shape exists, create an IndexRequest
-              body.push({
-                index: {
-                  _index: indexName,
+              body.push(
+                {
+                  index: {
+                    _index: indexName,
+                  },
                 },
-              }, doc);
+                doc,
+              );
             }
           }
 
@@ -273,9 +296,11 @@ class ElasticsearchService {
 
         const results = await Promise.all(responses);
         if (results[0].errors) {
-          const errs = results[0].items.filter(i => (i?.index ?? i?.update)?.status > 399).map(i => {
-            return new Error((i?.index ?? i?.update)?.error?.reason ?? 'unknown')
-          });
+          const errs = results[0].items
+            .filter((i) => (i?.index ?? i?.update)?.status > 399)
+            .map((i) => {
+              return new Error((i?.index ?? i?.update)?.error?.reason ?? 'unknown');
+            });
           errs?.forEach(logger.error);
         }
 
@@ -323,7 +348,10 @@ class ElasticsearchService {
       }
     },
 
-    updateMetadata: async (indexName: string, newMetadata: Record<string, any>): Promise<estypes.IndicesPutMappingResponse | undefined> => {
+    updateMetadata: async (
+      indexName: string,
+      newMetadata: Record<string, any>,
+    ): Promise<estypes.IndicesPutMappingResponse | undefined> => {
       logger.debug(`Index ${indexName}: Updating metadata`);
       try {
         await this.index.create(indexName);
@@ -335,13 +363,13 @@ class ElasticsearchService {
             _meta: {
               ...existingMetadata,
               ...newMetadata,
-            }
-          }
+            },
+          },
         });
       } catch (error) {
         logger.error(`Index ${indexName}: Error updating metadata:`, error);
       }
-    }
+    },
   };
 
   public data = {
@@ -356,61 +384,71 @@ class ElasticsearchService {
       }
     },
 
-    compute: async (index: string, _query?: estypes.QueryDslQueryContainer, _aggs?: estypes.AggregationsAggregationContainer): Promise<estypes.SearchResponse> => {
+    compute: async (
+      index: string,
+      _query?: estypes.QueryDslQueryContainer,
+      _aggs?: estypes.AggregationsAggregationContainer,
+    ): Promise<estypes.SearchResponse> => {
       const client = this;
 
       const query = _query ?? {
-        "bool": {
-          "filter": [
+        bool: {
+          filter: [
             {
-              "range": {
-                "lastSeen": {
-                  "gte": "now-30d/d",
-                  "lte": "now/d"
-                }
-              }
-            }
-          ]
-        }
-      };
-
-      const aggs = _aggs ?? {
-        "unique_addresses": {
-          "terms": {
-            "field": "address.keyword",
-            "size": 10000
-          },
-          "aggs": {
-            "latest_record": {
-              "top_hits": {
-                "size": 1,
-                "_source": {
-                  "includes": ["price"]
+              range: {
+                lastSeen: {
+                  gte: 'now-30d/d',
+                  lte: 'now/d',
                 },
-                "sort": [
-                  {
-                    "lastSeen": {
-                      "order": "desc"
-                    }
-                  }
-                ]
-              }
-            }
-          }
+              },
+            },
+          ],
         },
       };
 
-      return this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
-        index: index,
-        body: {
-          size: 0,
-          query: query,
-          aggs: aggs
-        }
-      }).catch(e => e);
+      const aggs = _aggs ?? {
+        unique_addresses: {
+          terms: {
+            field: 'address.keyword',
+            size: 10000,
+          },
+          aggs: {
+            latest_record: {
+              top_hits: {
+                size: 1,
+                _source: {
+                  includes: ['price'],
+                },
+                sort: [
+                  {
+                    lastSeen: {
+                      order: 'desc',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      return this.client
+        .search<estypes.SearchResponse<estypes.SearchResponse>>({
+          index: index,
+          body: {
+            size: 0,
+            query: query,
+            aggs: aggs,
+          },
+        })
+        .catch((e) => e);
     },
 
-    query: async (indexName: string, body: estypes.SearchRequest, size: number = 1000): Promise<estypes.SearchResponse<unknown>> => {
+    query: async (
+      indexName: string,
+      body: estypes.SearchRequest,
+      size: number = 1000,
+    ): Promise<estypes.SearchResponse<unknown>> => {
       logger.debug(`es: querying data from ${indexName}`);
       body.size = body.size ?? size; // Ensure the size is set in the body, defaulting to the function parameter
 
@@ -428,7 +466,11 @@ class ElasticsearchService {
       }
     },
 
-    get: async (indexName: string, query: estypes.QueryDslQueryContainer = { match_all: {} }, size: number = 1000): Promise<DatasetSchema | void> => {
+    get: async (
+      indexName: string,
+      query: estypes.QueryDslQueryContainer = { match_all: {} },
+      size: number = 1000,
+    ): Promise<DatasetSchema | void> => {
       logger.debug(`es: fetching data from ${indexName}`);
       const body = {
         query,
@@ -457,28 +499,32 @@ class ElasticsearchService {
         };
       } catch (error) {
         if (error.message.includes('index_not_found_exception')) {
-          return undefined // { ...error.meta.body, message: error.message };
+          return undefined; // { ...error.meta.body, message: error.message };
         }
         logger.error(`Index ${indexName}: Error fetching data:`, error);
         throw error;
       }
     },
 
-    record: async (indexName: string, query: estypes.QueryDslQueryContainer = { match_all: {} }, size: number = 1): Promise<KeyValuePair<unknown> | void> => {
+    record: async (
+      indexName: string,
+      query: estypes.QueryDslQueryContainer = { match_all: {} },
+      size: number = 1,
+    ): Promise<KeyValuePair<unknown> | void> => {
       try {
         // TODO: figure out why promise.all isnt properly awaiting, and make these in parallel
         const response = await this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
           index: indexName,
           body: {
             query,
-            size
-          }
+            size,
+          },
         });
         return (responseTransformer(response) ?? []).at(0);
       } catch (error) {
         logger.error(`Index ${indexName}: Error fetching data:`, error);
         if (error.message.includes('index_not_found_exception')) {
-          return undefined // { ...error.meta.body, message: error.message };
+          return undefined; // { ...error.meta.body, message: error.message };
         }
 
         throw error;
@@ -488,7 +534,7 @@ class ElasticsearchService {
     mutate: async (indexName: string, field: string) => {
       const { records } = await this.data.get(indexName);
 
-      const mutatedRecords = records.map(record => {
+      const mutatedRecords = records.map((record) => {
         const recordDate = record[field];
         const epochTimestamp = new Date(recordDate, 0, 1).getTime();
         record.date = epochTimestamp;
@@ -496,7 +542,7 @@ class ElasticsearchService {
       });
 
       return this.index.upsert(indexName, { records: mutatedRecords });
-    }
+    },
   };
 
   public utility = {
@@ -528,17 +574,21 @@ class ElasticsearchService {
         // Get the duplicate document groups
         // @ts-ignore
         const duplicateGroups = response?.aggregations?.duplicates?.buckets;
-        let promiseResults = [];
+        const promiseResults = [];
         if (duplicateGroups.length > 0) {
           // @ts-ignore
           duplicateGroups.map(async (foundDuplicate) => {
             const dupeRecords = foundDuplicate.duplicate_docs.hits.hits;
             dupeRecords.pop(); // pop off the record to keep
             // @ts-ignore
-            promiseResults.push(dupeRecords.map(async ({ _index: index, _id: id }) => this.client.delete({
-              index,
-              id,
-            })));
+            promiseResults.push(
+              dupeRecords.map(async ({ _index: index, _id: id }) =>
+                this.client.delete({
+                  index,
+                  id,
+                }),
+              ),
+            );
           });
         }
 
@@ -550,8 +600,8 @@ class ElasticsearchService {
       } catch (error) {
         console.error('Error deleting duplicate documents:', error);
       }
-    }
-  }
+    },
+  };
 
   public async listIndices() {
     const indexes = await this.client.cat.indices({
@@ -575,7 +625,11 @@ class ElasticsearchService {
    * @param size The number of search hits to return.
    * @returns A promise that resolves to the search results.
    */
-  public async query(indexNames: string | string[], luceneQuery: string, size: number = 1000): Promise<Record<string, unknown>[]> {
+  public async query(
+    indexNames: string | string[],
+    luceneQuery: string,
+    size: number = 1000,
+  ): Promise<Record<string, unknown>[]> {
     const indexes = Array.isArray(indexNames) ? indexNames.join(',') : indexNames;
     logger.debug(`Querying index(es) ${indexNames} with query: ${luceneQuery}`);
     try {
@@ -584,11 +638,11 @@ class ElasticsearchService {
         body: {
           query: {
             query_string: {
-              query: luceneQuery
-            }
+              query: luceneQuery,
+            },
           },
-          size
-        }
+          size,
+        },
       });
       logger.debug(`Query successful: ${indexes}`);
       return responseTransformer(response);
@@ -601,7 +655,7 @@ class ElasticsearchService {
 
 // Interfaces and types
 interface DatasetSchema {
-  meta?: ElasticsearchDocument
+  meta?: ElasticsearchDocument;
   records: ElasticsearchDocument[];
 }
 
