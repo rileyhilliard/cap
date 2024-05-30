@@ -51,7 +51,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ steps.package-version.outputs.current-version }}
+          docker build -t estate-metrics . --file Dockerfile --tag ${{ steps.package-version.outputs.current-version }}
 
   Deploy:
     needs: Build-Docker-Image
