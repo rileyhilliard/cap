@@ -14,7 +14,8 @@ export function createApplication(): Express {
   configureApp(app);
   setupRoutes(app);
 
-  // disabling for now: this would need to be fully overhauled if a graphql server is desired setupApolloServer(app);
+  // disabling for now: this would need to be fully overhauled if a graphql server is desired 
+  // setupApolloServer(app);
 
   return app;
 }
