@@ -43,9 +43,15 @@ jobs:
       - name: Set up Docker
         uses: docker-practice/actions-setup-docker@master
 
+      - name: Read package.json
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: packages/backend
+
       - name: Build Docker image
         run: |
-          docker build -t estate-metrics . --file Dockerfile --tag ${{ needs.bump-version.outputs.new_version }}
+          docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ steps.package-version.outputs.current-version }}
 
   Deploy:
     needs: Build-Docker-Image
