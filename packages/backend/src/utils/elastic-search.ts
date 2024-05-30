@@ -126,18 +126,14 @@ class ElasticsearchService {
       throw new Error('An ElasticsearchService instance has already been created. Use ElasticsearchService.getInstance() to get its instance');
     }
 
-    const suppliedHost = getServeArg('--elastic');
     const devLocalHost = 'http://localhost:9200';
-    const devRemoteHost = 'http://dev.elastic.opnhub.ai';
-    const prodRemoteHost = 'http://elastic.opnhub.ai';
-    const defaultProdLocalHost = 'http://localhost:9200';
+    // process?.env?.ELASTIC is set in pm2.config.cjs
+    const host = process.env.ELASTIC ?? devLocalHost;
 
-    if (!isDev && !suppliedHost) {
-      logger.warn(`elasticsearch: production served with no --elastic flag specifying where elastic search is hosted. Expected something like --elastic=${devLocalHost}. Falling back to ${defaultProdLocalHost}`);
+    if (!isDev && host === devLocalHost) {
+      logger.error(`elasticsearch: production served with the dev elasticsearch host (${devLocalHost}). It should be something like http://<elasticsearch docker container name>:9200`);
     }
 
-    const host = suppliedHost ||
-      isDev ? devLocalHost : defaultProdLocalHost;
     this.client = new Client({ node: host });
   }
 

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { VitePluginNode } from 'vite-plugin-node';
 import path from 'path';
+import resolve from '@rollup/plugin-node-resolve';
 
 export default defineConfig(({ command, mode }) => {
   const isDev = mode === 'development';
@@ -28,5 +29,13 @@ export default defineConfig(({ command, mode }) => {
       target: 'esnext',
       sourcemap: true,
     },
+    // build: {
+    //   rollupOptions: {
+    //     plugins: [resolve()],
+    //     output: {
+    //       format: 'cjs', // Use CommonJS format for the output
+    //     },
+    //   },
+    // },
   };
 });

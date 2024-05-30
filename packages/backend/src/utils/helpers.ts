@@ -165,6 +165,10 @@ export function getServeArg(arg: string): string | undefined {
 }
 
 export function getServePort(): number {
+  // process.env.PORT is set from pm2.config.cjs
+  const pm2PortArg = process.env.PORT
+  if (pm2PortArg) return pm2PortArg;
+
   let port = 4000; // Default port
   const portArg = parseInt(getServeArg('--port') || '', 10);
   if (!isNaN(portArg)) {

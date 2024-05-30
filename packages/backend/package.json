@@ -8,11 +8,20 @@
     "rename:mjs": "./scripts/rename.sh",
     "compile": "tsc --incremental",
     "watch": "yarn run compile --watch",
-    "elasticsearch:start": "docker-compose -f ../dockers/docker-compose.yml up -d",
+    "elasticsearch:start": "docker-compose -f ../dockers/dev/docker-compose.yml up -d",
+    "prod:start": "yarn docker:shutdown ; docker-compose up -d",
     "dev": "yarn elasticsearch:start && yarn nodemon",
-    "build": "yarn vite build --mode production",
-    "serve": "node ./dist/server.prod.js --port 3030 --elastic 'http://localhost:9200'",
-    "build:serve": "yarn build && yarn serve"
+    "build": "rm -rf ./dist && yarn vite build --mode production",
+    "serve": "yarn pm2 start ./dist/server.prod.js",
+    "serve:prod": "pm2 start ./dist/server.prod.js",
+    "build:serve": "yarn build && yarn serve",
+    "docker:build": "yarn docker:shutdown ; docker build -t estate-metrics --progress=plain .",
+    "docker:shutdown": "docker stop estate-metrics && docker rm -v estate-metrics && docker rm -f estate-metrics",
+    "docker:purge": "docker system prune -a -f",
+    "docker:up": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:5000 estate-metrics",
+    "docker:up:debug": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:5000 --entrypoint=/bin/bash estate-metrics",
+    "docker:ssh": "docker exec -it estate-metrics /bin/bash",
+    "logs": "yarn pm2 logs"
   },
   "keywords": [],
   "author": "",
@@ -20,23 +29,25 @@
   "type": "module",
   "dependencies": {
     "@apollo/server": "^4.10.4",
+    "@elastic/elasticsearch": "^8.13.1",
     "body-parser": "^1.20.2",
     "express": "^4.19.2",
     "graphql": "^16.8.1",
     "mongoose": "^8.3.3",
     "node-fetch": "^3.3.2",
-    "node-schedule": "^2.1.1"
+    "node-schedule": "^2.1.1",
+    "pm2": "^5.4.0"
   },
   "devDependencies": {
-    "@elastic/elasticsearch": "^8.13.1",
     "@faker-js/faker": "^8.4.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
     "@typegoose/typegoose": "^12.4.0",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^1.4.11",
-    "@types/node": "^20.12.7",
+    "@types/node": "^20.12.13",
     "@types/winston": "^2.4.4",
     "concurrently": "^8.2.2",
     "csv-parse": "^5.5.5",
@@ -50,5 +61,10 @@
     "vite-plugin-node": "^3.1.0",
     "winston": "^3.13.0",
     "winston-daily-rotate-file": "^5.0.0"
+  },
+  "overrides": {
+    "vite-plugin-node-polyfills": {
+      "vite": "^5.0.1"
+    }
   }
 }

@@ -25,7 +25,10 @@
   },
   "volta": {
     "node": "22.0.0",
-    "yarn": "4.1.1"
+    "yarn": "4.2.2"
   },
-  "packageManager": "yarn@4.1.1"
+  "packageManager": "yarn@4.2.2",
+  "dependencies": {
+    "pm2": "^5.4.0"
+  }
 }
