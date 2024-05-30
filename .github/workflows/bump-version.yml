@@ -8,7 +8,7 @@ on:
       - "packages/backend/**"
 
 jobs:
-  bump-version:
+  Bump-Version:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
@@ -32,8 +32,8 @@ jobs:
           PRERELEASE_SUFFIX: rc
           VERBOSE: true
 
-  build-docker-image:
-    needs: bump-version
+  Build-Docker-Image:
+    needs: Bump-Version
     runs-on: ubuntu-latest
 
     steps:
@@ -44,8 +44,8 @@ jobs:
         run: |
           docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ needs.bump-version.outputs.new_version }}
 
-  deploy:
-    needs: build-docker-image
+  Deploy:
+    needs: Build-Docker-Image
     runs-on: ubuntu-latest
 
     steps:
