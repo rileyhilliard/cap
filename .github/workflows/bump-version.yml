@@ -1,14 +1,18 @@
-name: Bump version
+name: Bump version & Deploy
 
 on:
   pull_request:
     types: [closed]
     branches: [main]
+    paths:
+      - "packages/backend/**"
 
 jobs:
   bump-version:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump-version.outputs.new_version }}
 
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +20,8 @@ jobs:
           fetch-depth: "0"
 
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.55.0 # You can use the latest version
+        id: bump-version
+        uses: anothrNick/github-tag-action@1.69.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
@@ -26,3 +31,37 @@ jobs:
           TAG_CONTEXT: repo
           PRERELEASE_SUFFIX: rc
           VERBOSE: true
+
+  build-docker-image:
+    needs: bump-version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Docker
+        uses: docker-practice/actions-setup-docker@master
+
+      - name: Build Docker image
+        run: |
+          docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ needs.bump-version.outputs.new_version }}
+
+  deploy:
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        run: echo "This step would deploy to the server"
+        # env:
+        #   SSH_USER: ${{ secrets.SSH_USER }}
+        #   SSH_HOST: ${{ secrets.SSH_HOST }}
+        #   WORK_DIR: ${{ secrets.WORK_DIR }}
+        # run: |
+        #   mkdir -p ~/.ssh
+        #   echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        #   chmod 600 ~/.ssh/id_rsa
+        #   ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+        #   ssh $SSH_USER@$SSH_HOST "cd $WORK_DIR && \
+        #     git checkout main && \
+        #     git pull origin main && \
+        #     docker-compose down && \
+        #     docker-compose up -d"
