@@ -19,24 +19,27 @@ jobs:
         working-directory: packages/backend
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node v22
+        uses: actions/setup-node@v4
         with:
           node-version: "22.x"
 
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Set Yarn version
+      - name: Set Yarn version to @stable
         run: corepack prepare yarn@stable --activate
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
 
-      - uses: actions/cache@v3
+      # NOTE, this probably isnt tuned fully right
+      - uses: actions/cache@v4
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -56,17 +59,21 @@ jobs:
       - name: Run Vitest tests
         run: yarn vitest
 
-      - name: Generate new version
+      - name: Get release version
         id: version
-        uses: HardNorth/github-version-generate@v1.4.0
-        with:
-          version-source: file
-          version-file: package.json
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_VERSION=$(echo $PACKAGE_VERSION | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker
+        uses: docker-practice/actions-setup-docker@master
 
       - name: Build Docker image
         run: |
           docker build -t estate-metrics . --file Dockerfile --tag estate-metrics:${{ steps.version.outputs.RELEASE_VERSION }}
 
+      # TODO move this to its own job
       # - name: Deploy to on-prem server
       #   uses: appleboy/ssh-action@master
       #   with:
