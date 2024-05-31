@@ -1,12 +1,12 @@
-name: Bump Version
+name: Backend | Bump Version
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [closed]
-    branches: [main]
-    paths:
-      - "packages/backend/**"
+  # pull_request:
+  #   types: [closed]
+  #   branches: [main]
+  #   paths:
+  #     - "packages/backend/**"
 
 jobs:
   bump-version:
