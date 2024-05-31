@@ -1,4 +1,4 @@
-name: Build Docker Image and Deploy
+name: Backend | Build Docker Image and Deploy
 
 on:
   workflow_run:
