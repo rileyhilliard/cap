@@ -1271,7 +1271,7 @@ __metadata:
     "@types/supertest": "npm:^6.0.2"
     "@types/winston": "npm:^2.4.4"
     "@typescript-eslint/eslint-plugin": "npm:8.0.0-alpha.24"
-    "@typescript-eslint/parser": "npm:^7.11.0"
+    "@typescript-eslint/parser": "npm:8.0.0-alpha.24"
     "@yarnpkg/pnpify": "npm:^4.1.0"
     body-parser: "npm:^1.20.2"
     concurrently: "npm:^8.2.2"
@@ -4047,7 +4047,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/parser@npm:7.11.0, @typescript-eslint/parser@npm:^7.11.0":
+"@typescript-eslint/parser@npm:7.11.0":
   version: 7.11.0
   resolution: "@typescript-eslint/parser@npm:7.11.0"
   dependencies:
@@ -4062,6 +4062,24 @@ __metadata:
     typescript:
       optional: true
   checksum: 10/0a32417aec62d7de04427323ab3fc8159f9f02429b24f739d8748e8b54fc65b0e3dbae8e4779c4b795f0d8e5f98a4d83a43b37ea0f50ebda51546cdcecf73caa
+  languageName: node
+  linkType: hard
+
+"@typescript-eslint/parser@npm:8.0.0-alpha.24":
+  version: 8.0.0-alpha.24
+  resolution: "@typescript-eslint/parser@npm:8.0.0-alpha.24"
+  dependencies:
+    "@typescript-eslint/scope-manager": "npm:8.0.0-alpha.24"
+    "@typescript-eslint/types": "npm:8.0.0-alpha.24"
+    "@typescript-eslint/typescript-estree": "npm:8.0.0-alpha.24"
+    "@typescript-eslint/visitor-keys": "npm:8.0.0-alpha.24"
+    debug: "npm:^4.3.4"
+  peerDependencies:
+    eslint: ^8.57.0 || ^9.0.0
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 10/14032b29fcc83067819446ec0c9c2dd570c37ad5ad152bffbaf550ac90c90281f0f0d6d4d9a44dd65db430e40c6c2e5a3a97a84bfad589b1a2919feb433e425e
   languageName: node
   linkType: hard
 
