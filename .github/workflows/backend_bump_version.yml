@@ -30,6 +30,10 @@ jobs:
         uses: "phips28/gh-action-bump-version@master"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGEJSON_DIR: "packages/backend"
+        with:
+          target-branch: "master"
+          commit-message: "CI: bumps version to {{version}} [skip ci]"
       - name: "cat package.json"
         run: cat ./package.json
       - name: "Output Step"
