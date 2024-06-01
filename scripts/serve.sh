@@ -16,7 +16,7 @@ tmux send-keys -t mySession:0 'yarn start:backend' C-m
 tmux split-window -h 
 
 # Run the start command for package-a (frontend) in the right pane (1)
-tmux send-keys -t mySession:0.1 'sleep 3 && yarn start:frontend' C-m 
+# tmux send-keys -t mySession:0.1 'sleep 3 && yarn start:frontend' C-m 
 
 # Attach to the tmux session so you can see the output
 tmux attach -t mySession
