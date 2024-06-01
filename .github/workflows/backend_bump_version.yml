@@ -23,11 +23,16 @@ jobs:
         id: increment_tag
         run: |
           CURRENT_TAG=${{ steps.get_tag.outputs.TAG }}
-          MAJOR_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f1)
-          MINOR_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f2)
-          PATCH_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f3)
-          NEW_PATCH_VERSION=$((PATCH_VERSION + 1))
-          NEW_TAG="$MAJOR_VERSION.$MINOR_VERSION.$NEW_PATCH_VERSION"
+          if [[ $CURRENT_TAG =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR_VERSION=${BASH_REMATCH[1]}
+            MINOR_VERSION=${BASH_REMATCH[2]}
+            PATCH_VERSION=${BASH_REMATCH[3]}
+            NEW_PATCH_VERSION=$((PATCH_VERSION + 1))
+            NEW_TAG="$MAJOR_VERSION.$MINOR_VERSION.$NEW_PATCH_VERSION"
+          else
+            echo "Current tag '$CURRENT_TAG' does not follow the expected format. Setting NEW_TAG to 'v0.0.1'."
+            NEW_TAG="v0.0.1"
+          fi
           echo ::set-output name=NEW_TAG::$NEW_TAG
 
       - name: Create new tag
