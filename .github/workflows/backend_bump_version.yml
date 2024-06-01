@@ -27,17 +27,18 @@ jobs:
           current-version: ${{ steps.package-version.outputs.current-version }}
           version-fragment: "bug"
       - name: Create new tag
+        working-directory: packages/backend
         run: |
           echo "Current version is ${{ steps.package-version.outputs.current-version }}.\nNext version is ${{ steps.bump_version.outputs.next-version }}"
           git tag ${{ steps.bump_version.outputs.next-version }}
           git push origin ${{ steps.bump_version.outputs.next-version }}
 
       - name: Update package.json
+        working-directory: packages/backend
         run: |
-          npm version ${{ steps.bump_version.outputs.next-version }}
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git commit -am "Update version to ${{ steps.bump_version.outputs.next-version }}"
+          npm version ${{ steps.bump_version.outputs.next-version }}
           git push
 
 # name: Backend | Bump Version
