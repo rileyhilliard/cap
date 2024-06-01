@@ -15,37 +15,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get latest tag
-        id: get_tag
-        run: echo ::set-output name=TAG::$(git describe --tags --abbrev=0)
-
-      - name: Increment tag version
-        id: increment_tag
-        run: |
-          CURRENT_TAG=${{ steps.get_tag.outputs.TAG }}
-          if [[ $CURRENT_TAG =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            MAJOR_VERSION=${BASH_REMATCH[1]}
-            MINOR_VERSION=${BASH_REMATCH[2]}
-            PATCH_VERSION=${BASH_REMATCH[3]}
-            NEW_PATCH_VERSION=$((PATCH_VERSION + 1))
-            NEW_TAG="$MAJOR_VERSION.$MINOR_VERSION.$NEW_PATCH_VERSION"
-          else
-            echo "Current tag '$CURRENT_TAG' does not follow the expected format. Setting NEW_TAG to 'v0.0.1'."
-            NEW_TAG="v0.0.1"
-          fi
-          echo ::set-output name=NEW_TAG::$NEW_TAG
-
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: packages/backend
+      - name: Bump release version
+        id: bump_version
+        uses: christian-draeger/increment-semantic-version@1.1.0
+        with:
+          current-version: ${{ steps.package-version.outputs.current-version }}
+          version-fragment: "bug"
       - name: Create new tag
         run: |
-          git tag ${{ steps.increment_tag.outputs.NEW_TAG }}
-          git push origin ${{ steps.increment_tag.outputs.NEW_TAG }}
+          echo "Current version is ${{ steps.package-version.outputs.current-version }}.\nNext version is ${{ steps.bump_version.outputs.next-version }}"
+          git tag ${{ steps.bump_version.outputs.next-version }}
+          git push origin ${{ steps.bump_version.outputs.next-version }}
 
       - name: Update package.json
         run: |
-          npm version ${{ steps.increment_tag.outputs.NEW_TAG }}
+          npm version ${{ steps.bump_version.outputs.next-version }}
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git commit -am "Update version to ${{ steps.increment_tag.outputs.NEW_TAG }}"
+          git commit -am "Update version to ${{ steps.bump_version.outputs.next-version }}"
           git push
 
 # name: Backend | Bump Version
