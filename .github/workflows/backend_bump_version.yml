@@ -1,58 +1,92 @@
-name: Backend | Bump Version
+name: Update Package Version
 
 on:
-  pull_request:
-    types: [closed]
-    branches: [main]
-    paths:
-      - "packages/backend/**"
+  push:
+    tags:
+      - "*"
 
 jobs:
-  bump-version:
-    name: "Bump Version"
-    if: github.event.pull_request.merged == true
+  update-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: packages/backend
+
     steps:
-      - name: "Checkout source code"
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-          fetch-depth: "0"
-      - name: "cat package.json"
-        run: cat ./package.json
-      - name: "Automated Version Bump"
-        id: version-bump
-        uses: "phips28/gh-action-bump-version@master"
+
+      - name: Get latest tag
+        id: get_tag
+        run: echo ::set-output name=TAG::$(git describe --tags --abbrev=0)
+
+      - name: Update package.json
+        run: |
+          npm version ${{ steps.get_tag.outputs.TAG }}
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git commit -am "Update version to ${{ steps.get_tag.outputs.TAG }}"
+          git push
+
+      - name: Create Release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGEJSON_DIR: "packages/backend"
         with:
-          target-branch: "main"
-          commit-message: "CI: bumps version to {{version}} [skip ci]"
-      - name: "cat package.json"
-        run: cat ./package.json
-      - name: "Output Step"
-        env:
-          NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
-        run: echo "new tag $NEW_TAG"
-      # - uses: actions/checkout@v4
-      #   with:
-      #     ref: ${{ github.event.pull_request.merge_commit_sha }}
-      #     fetch-depth: '0'
+          tag_name: ${{ steps.get_tag.outputs.TAG }}
+          release_name: Release ${{ steps.get_tag.outputs.TAG }}
 
-      # - name: Bump version and push tag
-      #   uses: anothrNick/github-tag-action@1.67.0
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     DEFAULT_BUMP: patch
-      #     WITH_V: true
-      #     RELEASE_BRANCHES: main
-      #     INITIAL_VERSION: 0.0.0
-      #     TAG_CONTEXT: repo
-      #     PRERELEASE_SUFFIX: rc
-      #     VERBOSE: true
+          # name: Backend | Bump Version
+# on:
+#   pull_request:
+#     types: [closed]
+#     branches: [main]
+#     paths:
+#       - "packages/backend/**"
+
+# jobs:
+#   bump-version:
+#     name: "Bump Version"
+#     if: github.event.pull_request.merged == true
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     defaults:
+#       run:
+#         working-directory: packages/backend
+#     steps:
+#       - name: "Checkout source code"
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.event.pull_request.merge_commit_sha }}
+#           fetch-depth: "0"
+#       - name: "cat package.json"
+#         run: cat ./package.json
+#       - name: "Automated Version Bump"
+#         id: version-bump
+#         uses: "phips28/gh-action-bump-version@master"
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           PACKAGEJSON_DIR: "packages/backend"
+#         with:
+#           target-branch: "main"
+#           commit-message: "CI: bumps version to {{version}} [skip ci]"
+#       - name: "cat package.json"
+#         run: cat ./package.json
+#       - name: "Output Step"
+#         env:
+#           NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
+#         run: echo "new tag $NEW_TAG"
+#       # - uses: actions/checkout@v4
+#       #   with:
+#       #     ref: ${{ github.event.pull_request.merge_commit_sha }}
+#       #     fetch-depth: '0'
+
+#       # - name: Bump version and push tag
+#       #   uses: anothrNick/github-tag-action@1.67.0
+#       #   env:
+#       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       #     DEFAULT_BUMP: patch
+#       #     WITH_V: true
+#       #     RELEASE_BRANCHES: main
+#       #     INITIAL_VERSION: 0.0.0
+#       #     TAG_CONTEXT: repo
+#       #     PRERELEASE_SUFFIX: rc
+#       #     VERBOSE: true
