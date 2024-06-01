@@ -1,9 +1,11 @@
 name: Update Package Version
 
 on:
-  push:
-    tags:
-      - "*"
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "packages/backend/**"
 
 jobs:
   update-version:
@@ -17,23 +19,31 @@ jobs:
         id: get_tag
         run: echo ::set-output name=TAG::$(git describe --tags --abbrev=0)
 
+      - name: Increment tag version
+        id: increment_tag
+        run: |
+          CURRENT_TAG=${{ steps.get_tag.outputs.TAG }}
+          MAJOR_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f1)
+          MINOR_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f2)
+          PATCH_VERSION=$(echo $CURRENT_TAG | cut -d'.' -f3)
+          NEW_PATCH_VERSION=$((PATCH_VERSION + 1))
+          NEW_TAG="$MAJOR_VERSION.$MINOR_VERSION.$NEW_PATCH_VERSION"
+          echo ::set-output name=NEW_TAG::$NEW_TAG
+
+      - name: Create new tag
+        run: |
+          git tag ${{ steps.increment_tag.outputs.NEW_TAG }}
+          git push origin ${{ steps.increment_tag.outputs.NEW_TAG }}
+
       - name: Update package.json
         run: |
-          npm version ${{ steps.get_tag.outputs.TAG }}
+          npm version ${{ steps.increment_tag.outputs.NEW_TAG }}
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git commit -am "Update version to ${{ steps.get_tag.outputs.TAG }}"
+          git commit -am "Update version to ${{ steps.increment_tag.outputs.NEW_TAG }}"
           git push
 
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_tag.outputs.TAG }}
-          release_name: Release ${{ steps.get_tag.outputs.TAG }}
-
-          # name: Backend | Bump Version
+# name: Backend | Bump Version
 # on:
 #   pull_request:
 #     types: [closed]
