@@ -1,4 +1,4 @@
-name: Backend | Build Docker Image
+name: Backend | Build & Deploy New Docker Image
 
 on:
   workflow_run:
@@ -45,8 +45,9 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           script: |
             docker stop estatemetrics && docker rm estatemetrics
-            docker pull ghcr.io/rileyhilliard/estatemetrics:latest 
-            docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics
+            docker pull ghcr.io/rileyhilliard/estatemetrics/estate-metrics:${{ steps.package-version.outputs.current-version }} 
+            docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
