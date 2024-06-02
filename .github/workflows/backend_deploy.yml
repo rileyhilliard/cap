@@ -46,6 +46,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           script: |
             docker stop estatemetrics && docker rm estatemetrics
