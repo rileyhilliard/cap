@@ -39,3 +39,14 @@ jobs:
       - name: Push Docker image to GitHub Container Registry
         run: |
           docker push ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+      - name: SSH and pull new image
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 8362
+          script: |
+            docker stop estatemetrics && docker rm estatemetrics
+            docker pull ghcr.io/rileyhilliard/estatemetrics:latest 
+            docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics
