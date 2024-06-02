@@ -49,5 +49,5 @@ jobs:
           port: 8362
           script: |
             docker stop estatemetrics && docker rm estatemetrics
-            docker pull ghcr.io/rileyhilliard/estatemetrics/estate-metrics:${{ steps.package-version.outputs.current-version }} 
+            docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
             docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
