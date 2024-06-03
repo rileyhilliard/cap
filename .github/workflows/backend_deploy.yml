@@ -48,15 +48,16 @@ jobs:
           script: |
             mkdir -p ~/Docker/estatemetrics
 
-      - name: Copy docker-compose.yml to remote server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 8362
-          source: "packages/backend/docker-compose.yml"
-          target: "~/Docker/estatemetrics"
+      # NOTE: authentication isnt working for some reason
+      # - name: Copy docker-compose.yml to remote server
+      #   uses: appleboy/scp-action@v0.1.7
+      #   with:
+      #     host: ${{ secrets.HOST }}
+      #     username: ${{ secrets.USERNAME }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: 8362
+      #     source: "packages/backend/docker-compose.yml"
+      #     target: "~/Docker/estatemetrics"
 
       - name: Pull New Image and Restart
         uses: appleboy/ssh-action@v1.0.3
