@@ -53,9 +53,7 @@ jobs:
           password: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           script: |
-            ls -la
-            cat .zshrc
-            # docker stop estatemetrics
-            # docker rm estatemetrics
-            # docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
-            # docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
+            .rd/bin/docker stop estatemetrics
+            .rd/bin/docker  rm estatemetrics
+            .rd/bin/docker  pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+            .rd/bin/docker  run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
