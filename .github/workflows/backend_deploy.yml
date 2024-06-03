@@ -36,29 +36,6 @@ jobs:
         run: |
           docker buildx build --platform linux/arm64 -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} --push packages/backend
 
-      # - name: Create ~/Docker/estatemetrics
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ secrets.HOST }}
-      #     username: ${{ secrets.USERNAME }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     passphrase: ${{ secrets.SSH_PASSPHRASE }}
-      #     password: ${{ secrets.SSH_PASSPHRASE }}
-      #     port: 8362
-      #     script: |
-      #       mkdir -p ~/Docker/estatemetrics
-
-      # NOTE: authentication isnt working for some reason
-      # - name: Copy docker-compose.yml to remote server
-      #   uses: appleboy/scp-action@v0.1.7
-      #   with:
-      #     host: ${{ secrets.HOST }}
-      #     username: ${{ secrets.USERNAME }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     port: 8362
-      #     source: "packages/backend/docker-compose.yml"
-      #     target: "~/Docker/estatemetrics"
-
       - name: Pull New Image and Restart
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -72,22 +49,34 @@ jobs:
             source ~/.zshrc
             echo ${{ secrets.ACCESS_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
-            docker stop estatemetrics ; docker rm estatemetrics || true
-            docker run -d --name elasticsearch_estatemetrics -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -v elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data docker.elastic.co/elasticsearch/elasticsearch:7.17.0 && \
-            docker run -d --name kibana_estatemetrics -p 5601:5601 -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" --link elasticsearch_estatemetrics:elasticsearch docker.elastic.co/kibana/kibana:7.17.20 && \
-            docker run -d --name estatemetrics -p 4000:4000 -e "NODE_ENV=production" --link elasticsearch_estatemetrics:elasticsearch ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
 
-      # - name: Pull New Image and Restart
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ secrets.HOST }}
-      #     username: ${{ secrets.USERNAME }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     passphrase: ${{ secrets.SSH_PASSPHRASE }}
-      #     password: ${{ secrets.SSH_PASSPHRASE }}
-      #     port: 8362
-      #     script: |
-      #       echo ${{ secrets.ACCESS_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      #       .rd/bin/docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
-      #       .rd/bin/docker stop estatemetrics ; .rd/bin/docker rm estatemetrics || true
-      #       .rd/bin/docker-compose -f ~/Docker/estatemetrics/docker-compose.yml up -d
+            # Check if elasticsearch_estatemetrics container is running
+            if [ "$(docker inspect -f '{{.State.Running}}' elasticsearch_estatemetrics 2>/dev/null)" = "true" ]; then
+              echo "elasticsearch_estatemetrics is already running"
+            else
+              # Check if elasticsearch_estatemetrics container exists
+              if docker ps -a --format '{{.Names}}' | grep -Eq "^elasticsearch_estatemetrics$"; then
+                echo "elasticsearch_estatemetrics container exists, restarting..."
+                docker restart elasticsearch_estatemetrics
+              else
+                echo "elasticsearch_estatemetrics container does not exist, creating..."
+                docker run -d --name elasticsearch_estatemetrics -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -v elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+              fi
+            fi
+
+            # Check if kibana_estatemetrics container is running
+            if [ "$(docker inspect -f '{{.State.Running}}' kibana_estatemetrics 2>/dev/null)" = "true" ]; then
+              echo "kibana_estatemetrics is already running"
+            else
+              # Check if kibana_estatemetrics container exists
+              if docker ps -a --format '{{.Names}}' | grep -Eq "^kibana_estatemetrics$"; then
+                echo "kibana_estatemetrics container exists, restarting..."
+                docker restart kibana_estatemetrics
+              else
+                echo "kibana_estatemetrics container does not exist, creating..."
+                docker run -d --name kibana_estatemetrics -p 5601:5601 -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" --link elasticsearch_estatemetrics:elasticsearch docker.elastic.co/kibana/kibana:7.17.20
+              fi
+            fi
+
+            docker stop estatemetrics ; docker rm estatemetrics || true
+            docker run -d --name estatemetrics -p 4000:4000 -e "NODE_ENV=production" --link elasticsearch_estatemetrics:elasticsearch ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
