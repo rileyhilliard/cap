@@ -1,9 +1,13 @@
 name: Backend | Build & Deploy New Docker Image
 
 on:
-  workflow_run:
-    workflows: ["Update Package Version"]
-    types: [completed]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "packages/backend/**"
+  # workflow_run:
+  # workflows: ["Update Package Version"]
+  # types: [completed]
 
 jobs:
   build-and-deploy:
@@ -11,34 +15,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # - uses: actions/checkout@v4
 
-      - name: Read package.json
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: packages/backend
+      # - name: Read package.json
+      #   id: package-version
+      #   uses: martinbeentjes/npm-get-version-action@v1.3.1
+      #   with:
+      #     path: packages/backend
 
-      - name: Log read version
-        run: echo ${{ steps.package-version.outputs.current-version }}
+      # - name: Log read version
+      #   run: echo ${{ steps.package-version.outputs.current-version }}
 
-      - name: Set up Docker
-        uses: docker-practice/actions-setup-docker@master
+      # - name: Set up Docker
+      #   uses: docker-practice/actions-setup-docker@master
 
-      - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} packages/backend
+      # - name: Build Docker image
+      #   run: |
+      #     docker build -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} packages/backend
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Log in to GitHub Container Registry
+      #   uses: docker/login-action@v2
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Docker image to GitHub Container Registry
-        run: |
-          docker push ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+      # - name: Push Docker image to GitHub Container Registry
+      #   run: |
+      #     docker push ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
       - name: SSH and pull new image
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -49,5 +53,6 @@ jobs:
           # password: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           script: |
-            docker stop estatemetrics ; docker rm estatemetrics ; docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
-            docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
+            whoami
+            # docker stop estatemetrics ; docker rm estatemetrics ; docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+            # docker run -d --rm --name estatemetrics ghcr.io/rileyhilliard/estatemetrics/estate-metrics
