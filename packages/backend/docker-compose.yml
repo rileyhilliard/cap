@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   estatemetrics:
-    image: ghcr.io/rileyhilliard/estatemetrics/estate-metrics:latest
+    image: ghcr.io/rileyhilliard/estatemetrics/estate-metrics:1.0.15
     ports:
       - "4000:4000"
     depends_on:
