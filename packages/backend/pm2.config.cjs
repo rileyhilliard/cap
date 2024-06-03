@@ -7,11 +7,11 @@ module.exports = {
       time: true,
       watch: true,
       ignore_watch: ['node_modules', 'logs'],
-      max_memory_restart: '500M',
+      max_memory_restart: '300M',
       instances: 1,
       max_restarts: 10,
       env: {
-        PORT: 5000,
+        PORT: 4000,
         ELASTIC: 'http://elasticsearch:9200',
       },
     },

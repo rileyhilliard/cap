@@ -36,7 +36,30 @@ jobs:
         run: |
           docker buildx build --platform linux/arm64 -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} --push packages/backend
 
-      - name: SSH and pull new image
+      - name: Create ~/Docker/estatemetrics
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SSH_PASSPHRASE }}
+          port: 8362
+          script: |
+            mkdir -p ~/Docker/estatemetrics
+
+      - name: Copy docker-compose.yml to remote server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: 8362
+          source: "packages/backend/docker-compose.yml"
+          target: "~/Docker/estatemetrics"
+
+      - name: Pull New Image and Restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -47,6 +70,5 @@ jobs:
           port: 8362
           script: |
             .rd/bin/docker pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
-            .rd/bin/docker stop estatemetrics || true
-            .rd/bin/docker rm estatemetrics || true
-            .rd/bin/docker run -d --name estatemetrics ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+            .rd/bin/docker stop estatemetrics ; .rd/bin/docker rm estatemetrics || true
+            .rd/bin/docker-compose -f ~/Docker/estatemetrics/docker-compose.yml up -d
