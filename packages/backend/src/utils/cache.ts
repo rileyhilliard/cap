@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { hasher } from '@utils/helpers';
+import { hasher, isDev } from '@utils/helpers';
 import { fileURLToPath } from 'url';
 import logger from '@utils/logger';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.resolve(path.dirname(__filename), '..');
 
@@ -21,6 +22,7 @@ export class Cache {
   }
 
   private async hasCache(key: string): Promise<boolean> {
+    if (!isDev) return false;
     const hash = hasher(key);
     const filePath = this.getFilePath(hash);
     if (fs.existsSync(filePath)) {
@@ -59,6 +61,7 @@ export class Cache {
   }
 
   public async set(key: string, data: any): Promise<void> {
+    if (!isDev) return;
     logger.debug(`SET cache for ${key}`);
     const existingCache = this.get(key) ?? Object.create(null);
     const hash = hasher(key);

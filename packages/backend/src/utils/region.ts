@@ -66,7 +66,7 @@ export const getIndexNames = (regionId: string) => ({
 });
 
 export const getBaseMeta = (regionId: string, zillow: any, redfin: any, indexes: ReturnType<typeof getIndexNames>) => ({
-  lastRan: timestamp,
+  lastRan: timestamp(),
   region: regionId,
   zillow: {
     rentals: zillow,
@@ -144,8 +144,22 @@ const upsertData = async (indexData: ReturnType<typeof getIndexData>) => {
   }
 };
 
+export const shouldRun = async (regionId: string): Promise<boolean> => {
+  const es = ElasticSearch.getInstance();
+  const millisecondsInADay = 24 * 60 * 60 * 1000;
+  const prevMeta = await es.data.metadata(regionId);
+  const lastRan = new Date(prevMeta?.lastRan ?? 0).getTime();
+
+  // dont run more than once per day
+  return Date.now() - lastRan < millisecondsInADay
+}
+
 export const updateRegionsIndex = async (regionId: string, options: any) => {
   const es = ElasticSearch.getInstance();
+  const proceed = await shouldRun(regionId);
+
+  if (!proceed) return;
+
   const { redfin, zillow } = options;
   const indexes = getIndexNames(regionId);
   const baseMeta = getBaseMeta(regionId, zillow, redfin, indexes);
@@ -158,7 +172,7 @@ export const updateRegionsIndex = async (regionId: string, options: any) => {
       },
     ],
     meta: {
-      lastRan: timestamp,
+      lastRan: timestamp(),
     },
   };
 
@@ -179,6 +193,9 @@ async function getRegionConfig(regionId: string): Promise<RegionConfig> {
 }
 
 export async function fetchRegion(regionId: string) {
+  const proceed = await shouldRun(regionId);
+  if (!proceed) return;
+
   const options = await getRegionConfig(regionId);
   const { redfin, zillow } = options;
 
