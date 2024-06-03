@@ -25,8 +25,8 @@
     "docker:build": "yarn docker:shutdown ; docker build -t estate-metrics --progress=plain .",
     "docker:shutdown": "docker stop estate-metrics && docker rm -v estate-metrics && docker rm -f estate-metrics",
     "docker:purge": "docker system prune -a -f",
-    "docker:up": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:5000 estate-metrics",
-    "docker:up:debug": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:5000 --entrypoint=/bin/bash estate-metrics",
+    "docker:up": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:4000 estate-metrics",
+    "docker:up:debug": "yarn docker:shutdown; docker run -it --name estate-metrics -p 4000:4000 --entrypoint=/bin/bash estate-metrics",
     "docker:ssh": "docker exec -it estate-metrics /bin/bash",
     "logs": "yarn pm2 logs"
   },
