@@ -1,5 +1,2 @@
-./cache
-./dist
-./logs
+logs
 cache
-/packages/backend/cache
