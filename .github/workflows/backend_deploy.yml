@@ -53,6 +53,7 @@ jobs:
           password: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           script: |
+            which docker
             .rd/bin/docker stop estatemetrics
             .rd/bin/docker  rm estatemetrics
             .rd/bin/docker  pull ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
