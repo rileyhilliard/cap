@@ -30,17 +30,6 @@
     "docker:ssh": "docker exec -it estate-metrics /bin/bash",
     "logs": "yarn pm2 logs"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{ts,js,json,cjs,mjs}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
-  },
   "dependencies": {
     "@apollo/server": "^4.10.4",
     "@elastic/elasticsearch": "^8.13.1",
@@ -68,8 +57,6 @@
     "eslint": "^9.3.0",
     "eslint-config-prettier": "^9.1.0",
     "graphql-scalars": "^1.23.0",
-    "husky": "^9.0.11",
-    "lint-staged": "^15.2.5",
     "nock": "^13.5.4",
     "nodemon": "^3.1.0",
     "prettier": "^3.2.5",
