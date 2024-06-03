@@ -54,7 +54,6 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 8362
           source: "packages/backend/docker-compose.yml"
           target: "~/Docker/estatemetrics"
