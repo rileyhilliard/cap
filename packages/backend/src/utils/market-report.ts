@@ -163,6 +163,7 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
         ...structuredClone(BASE_STAT),
         type: beds === 0 ? 'studio' : `${beds}-bedroom`,
         description: `${beds === 0 ? 'Studio' : `${beds} bedroom`} properties`,
+        beds,
       };
     }
 

@@ -1,0 +1,5 @@
+./cache
+./dist
+./logs
+cache
+/packages/backend/cache
