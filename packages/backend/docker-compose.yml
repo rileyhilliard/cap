@@ -1,9 +1,11 @@
 version: "3.8"
 services:
   estatemetrics:
-    image: ghcr.io/rileyhilliard/estatemetrics/estate-metrics:1.0.15
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "4000:4000"
+      - "5001:5000"
     depends_on:
       - elasticsearch
     environment:
