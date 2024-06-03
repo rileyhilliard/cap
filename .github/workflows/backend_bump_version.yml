@@ -40,6 +40,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Bump release version
+        working-directory: packages/backend
         id: bump-version
         run: |
           yarn version patch
