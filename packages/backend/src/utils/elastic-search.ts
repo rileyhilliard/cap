@@ -141,6 +141,8 @@ class ElasticsearchService {
       );
     }
 
+    logger.info(`elasticsearch: connecting to ${host}`);
+
     this.client = new Client({ node: host });
   }
 
@@ -216,10 +218,10 @@ class ElasticsearchService {
               },
               ...(schema
                 ? {
-                    mappings: {
-                      properties: schema,
-                    },
-                  }
+                  mappings: {
+                    properties: schema,
+                  },
+                }
                 : {}),
             },
           });
