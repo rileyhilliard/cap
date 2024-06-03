@@ -5,8 +5,11 @@ module.exports = {
       script: './dist/server.prod.js',
       log_file: '/app/logs/server.log',
       time: true,
-      watch: true,
-      ignore_watch: ['node_modules', 'logs', 'cache'],
+      // Turning off watch because the docker container is going to be removed and replaced @ deployment time
+      // so there's nothing to watch for: the service is going to be killed and replace entirely.
+      // In the future, if this is moved to a replacement model then watch should be re-enabled
+      // watch: true,
+      // ignore_watch: ['node_modules', 'logs', 'cache'],
       max_memory_restart: '300M',
       instances: 1,
       max_restarts: 10,
