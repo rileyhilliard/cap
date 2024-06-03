@@ -3,7 +3,7 @@ import { scrapeRedfinProperties, scrapeRedfinRentals } from '@backend/utils/redf
 import { scrapeZillowRentals, scrapeZillowProperties, decorateProperties } from '@utils/zillow';
 import ElasticSearch from '@utils/elastic-search';
 import { generateRentalReport } from '@utils/market-report';
-import { mergeRecords, timestamp, hasher } from '@utils/helpers';
+import { mergeRecords, timestamp, hasher, isDev } from '@utils/helpers';
 import type { ZillowRentalOptions, ZillowPropertyOptions } from '@utils/zillow';
 import type {
   ZillowRental,
@@ -15,6 +15,7 @@ import type {
 } from '@backend/types/property-types';
 import type { RedfinOptions } from '@utils/redfin';
 import type { RentalReport } from '@utils/market-report';
+import logger from './logger';
 
 const RENTALS_PREFIX = 'rentals';
 const PROPERTIES_PREFIX = 'properties';
@@ -151,14 +152,17 @@ export const shouldRun = async (regionId: string): Promise<boolean> => {
   const lastRan = new Date(prevMeta?.lastRan ?? 0).getTime();
 
   // dont run more than once per day
-  return Date.now() - lastRan < TwentyThreeHours
+  return isDev || Date.now() - lastRan < TwentyThreeHours;
 }
 
 export const updateRegionsIndex = async (regionId: string, options: any) => {
   const es = ElasticSearch.getInstance();
   const proceed = await shouldRun(regionId);
 
-  if (!proceed) return;
+  if (!proceed) {
+    logger.info(`Skipping updating the regions tracker index for ${regionId} as it was updated less than a day ago`);
+    return;
+  }
 
   const { redfin, zillow } = options;
   const indexes = getIndexNames(regionId);
@@ -194,7 +198,10 @@ async function getRegionConfig(regionId: string): Promise<RegionConfig> {
 
 export async function fetchRegion(regionId: string) {
   const proceed = await shouldRun(regionId);
-  if (!proceed) return;
+  if (!proceed) {
+    logger.info(`Skipping fetching region ${regionId} as it was updated less than a day ago`);
+    return;
+  }
 
   const options = await getRegionConfig(regionId);
   const { redfin, zillow } = options;
