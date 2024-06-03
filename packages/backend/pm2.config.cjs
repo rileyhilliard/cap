@@ -6,7 +6,7 @@ module.exports = {
       log_file: '/app/logs/server.log',
       time: true,
       watch: true,
-      ignore_watch: ['node_modules', 'logs'],
+      ignore_watch: ['node_modules', 'logs', 'cache'],
       max_memory_restart: '300M',
       instances: 1,
       max_restarts: 10,
