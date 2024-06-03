@@ -1314,6 +1314,7 @@ __metadata:
     "@types/cors": "npm:^2.8.17"
     "@types/express": "npm:^4.17.21"
     "@types/node": "npm:^20.12.13"
+    "@types/node-schedule": "npm:^2.1.7"
     "@types/supertest": "npm:^6.0.2"
     "@types/winston": "npm:^2.4.4"
     "@typescript-eslint/eslint-plugin": "npm:8.0.0-alpha.24"
@@ -3322,6 +3323,15 @@ __metadata:
     "@types/node": "npm:*"
     form-data: "npm:^4.0.0"
   checksum: 10/c416df8f182ec3826278ea42557fda08f169a48a05e60722d9c8edd4e5b2076ae281c6b6601ad406035b7201f885b0257983b61c26b3f9eb0f41192a807b5de5
+  languageName: node
+  linkType: hard
+
+"@types/node-schedule@npm:^2.1.7":
+  version: 2.1.7
+  resolution: "@types/node-schedule@npm:2.1.7"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10/cbcae09587563438896c01308702e46c212e44d11939b487d7019b74f4779668bf478d5e97880cb37e48514b02808db51b3469886a00ab3d0cac00e8a1b255df
   languageName: node
   linkType: hard
 

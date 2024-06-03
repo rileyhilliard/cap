@@ -146,12 +146,12 @@ const upsertData = async (indexData: ReturnType<typeof getIndexData>) => {
 
 export const shouldRun = async (regionId: string): Promise<boolean> => {
   const es = ElasticSearch.getInstance();
-  const millisecondsInADay = 24 * 60 * 60 * 1000;
+  const TwentyThreeHours = 23 * 60 * 60 * 1000;
   const prevMeta = await es.data.metadata(regionId);
   const lastRan = new Date(prevMeta?.lastRan ?? 0).getTime();
 
   // dont run more than once per day
-  return Date.now() - lastRan < millisecondsInADay
+  return Date.now() - lastRan < TwentyThreeHours
 }
 
 export const updateRegionsIndex = async (regionId: string, options: any) => {
