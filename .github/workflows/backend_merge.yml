@@ -164,8 +164,13 @@ jobs:
         working-directory: packages/backend
 
     steps:
-      - name: Log read version
-        run: echo "deploying"
+      - uses: actions/checkout@v4
+
+      - name: Read package.json
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: packages/backend
 
       - name: Pull New Image and Restart
         uses: appleboy/ssh-action@v1.0.3
