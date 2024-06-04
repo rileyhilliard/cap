@@ -533,7 +533,7 @@ class ElasticsearchService {
     mutate: async (indexName: string, field: string) => {
       const { records } = await this.data.get(indexName);
 
-      const mutatedRecords = records.map((record) => {
+      const mutatedRecords = records.map((record: ElasticsearchDocument) => {
         const recordDate = record[field];
         const epochTimestamp = new Date(recordDate, 0, 1).getTime();
         record.date = epochTimestamp;
