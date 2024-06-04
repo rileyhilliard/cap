@@ -206,7 +206,7 @@ class ElasticsearchService {
           // NOTE the inferrence here is probably close, but copilot was off by something specific
 
           const schema = options.inferTypes && records && generateSchemaFromRecords(records);
-          const result = await this.client.indices.create({
+          await this.client.indices.create({
             index: indexName,
             body: {
               settings: {

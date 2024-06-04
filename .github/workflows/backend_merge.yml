@@ -152,7 +152,7 @@ jobs:
 
       - name: Build and Push Docker image
         run: |
-          docker buildx build --platform linux/arm64 -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} --push packages/backend
+          docker buildx build --platform linux/arm64 -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} --push
 
   deploy:
     runs-on: ubuntu-latest
