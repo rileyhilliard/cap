@@ -28,13 +28,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
-          cache: "yarn"
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Set Yarn version to @stable
         run: corepack prepare yarn@stable --activate
+
+      # Enable Corepack for Yarn 4
+      - name: Enable Corepack
+        run: corepack enable
+
+      # Set Yarn version to the latest stable version
+      - name: Set Yarn version to @stable
+        run: corepack prepare yarn@stable --activate
+
+      # Get the Yarn cache directory path
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      # Cache the Yarn cache directory
+      - uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install
 
       - name: Install dependencies
         run: yarn install
@@ -61,13 +85,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
-          cache: "yarn"
 
+      # Enable Corepack for Yarn 4
       - name: Enable Corepack
         run: corepack enable
 
+      # Set Yarn version to the latest stable version
       - name: Set Yarn version to @stable
         run: corepack prepare yarn@stable --activate
+
+      # Get the Yarn cache directory path
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      # Restore the Yarn cache
+      - uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      # Install dependencies (this will use the cached packages if available)
+      - name: Install dependencies
+        run: yarn install
 
       - name: Bump release version
         working-directory: packages/backend
