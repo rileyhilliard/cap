@@ -1,10 +1,7 @@
 import { Client, estypes } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
-import { isValidUrl, getServeArg, isDev } from '@utils/helpers';
+import { isValidUrl, isDev } from '@utils/helpers';
 
-// Left off @: there are still records being dropped, though not many
-// capture failed records and log them, or surface them somewhere so
-// we can see what prop is getting typed incorrectly
 function inferElasticsearchFieldType(value: any): string {
   if (typeof value === 'number') {
     if (Number.isInteger(value) && value !== 0) {
