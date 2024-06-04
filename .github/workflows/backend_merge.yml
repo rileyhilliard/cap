@@ -1,14 +1,89 @@
-name: Backend | Build & Deploy New Docker Image
+name: Build, Publish and Deploy Docker Image
 
 on:
-  workflow_run:
-    workflows: ["Update Package Version"]
-    types: [completed]
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "packages/backend/**"
 
 jobs:
-  build-and-deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  build-smoke-test:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+
+      - name: Setup Node v22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set Yarn version to @stable
+        run: corepack prepare yarn@stable --activate
+
+      - name: Install dependencies
+        run: yarn install
+
+      # - name: Run ESLint
+      #   run: yarn run eslint . --max-warnings 9999
+
+      - name: Build TypeScript app
+        run: yarn build
+
+      - name: Run Vitest tests
+        run: yarn vitest
+  update-version:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node v22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set Yarn version to @stable
+        run: corepack prepare yarn@stable --activate
+
+      - name: Bump release version
+        working-directory: packages/backend
+        id: bump-version
+        run: |
+          yarn version patch
+
+      - name: Update package.json
+        working-directory: packages/backend
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add package.json
+          git push origin main --tags
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/backend
 
     steps:
       - uses: actions/checkout@v4

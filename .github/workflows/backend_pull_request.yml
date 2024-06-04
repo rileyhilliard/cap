@@ -1,17 +1,13 @@
 name: Backend | Tests
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "packages/backend/**"
   pull_request:
     branches: ["main"]
     paths:
       - "packages/backend/**"
 
 jobs:
-  Build_and_Test:
+  test:
     runs-on: ubuntu-latest
 
     defaults:
