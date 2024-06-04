@@ -296,7 +296,7 @@ class ElasticsearchService {
         const results = await Promise.all(responses);
         if (results[0].errors) {
           const errs = results[0].items
-            .filter((i) => (i?.index ?? i?.update)?.status > 399)
+            .filter((i) => (i?.index ?? i?.update)?.status || 200 > 399)
             .map((i) => {
               return new Error((i?.index ?? i?.update)?.error?.reason ?? 'unknown');
             });
