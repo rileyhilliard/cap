@@ -253,7 +253,7 @@ class ElasticsearchService {
         return dataset;
       }
 
-      const batchSize = 3000; // Adjust the batch size as needed
+      const batchSize = 3000;
 
       try {
         const responses: Promise<estypes.BulkResponse>[] = [];
