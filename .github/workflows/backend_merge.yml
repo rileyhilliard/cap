@@ -210,7 +210,12 @@ jobs:
                 docker restart kibana_estatemetrics
               else
                 echo "kibana_estatemetrics container does not exist, creating..."
-                docker run -d --name kibana_estatemetrics -p 5601:5601 -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" --link elasticsearch_estatemetrics:elasticsearch docker.elastic.co/kibana/kibana:7.17.20
+                docker run -d --name kibana_estatemetrics -p 5601:5601 \
+                  -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" \
+                  -e "SERVER_PUBLICBASEURL=http://kibana.opnhub.ai" \
+                  -e "SERVER_HOST=0.0.0.0" \
+                  --link elasticsearch_estatemetrics:elasticsearch \
+                  docker.elastic.co/kibana/kibana:7.17.20
               fi
             fi
 

@@ -152,7 +152,7 @@ export const shouldRun = async (regionId: string): Promise<boolean> => {
   const lastRan = new Date(prevMeta?.lastRan ?? 0).getTime();
 
   // dont run more than once per day
-  return isDev || Date.now() - lastRan < TwentyThreeHours;
+  return isDev || Date.now() - lastRan > TwentyThreeHours;
 }
 
 export const updateRegionsIndex = async (regionId: string, options: any) => {
