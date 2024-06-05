@@ -1,12 +1,11 @@
 import logger from '@utils/logger';
 
 export function setupErrorHandlers(): void {
-  process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.on('unhandledRejection', (reason: Error, promise) => {
+    logger.error('unhandledRejection', { unhandledRejection: true, ...reason });
   });
 
-  process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', error);
-    // Consider more graceful exception handling here
+  process.on('uncaughtException', (error: Error) => {
+    logger.error('uncaughtException', { uncaughtException: true, ...error });
   });
 }
