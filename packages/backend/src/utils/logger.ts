@@ -4,15 +4,17 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import util from 'util';
 import ElasticSearch from '@utils/elastic-search';
 import { timestamp, hasher, isDev } from '@utils/helpers';
+import chalk from 'chalk';
 
 const { env } = process;
+const cwd = process.cwd();
+const trimPath = cwd.substring(0, cwd.lastIndexOf('/') + 1);
 
 let lastTimestamp = Date.now();
 
 const durationFormat = format.printf((info) => {
   const now = Date.now();
   const durationMs = now - lastTimestamp;
-  // console.log(`${info.message} durationMs: `, durationMs);
   lastTimestamp = now;
   const _d = new Date(lastTimestamp);
 
@@ -35,12 +37,13 @@ const durationFormat = format.printf((info) => {
     formattedDuration = `${minutes}m ${seconds}s`;
   }
 
-  const args = info[Symbol.for('splat')] || [];
+  const stack = removeLines(cleanStackTrace(info?.stack ?? new Error().stack, false), 2)
+  const args = (info[Symbol.for('splat')] || []).filter((arg) => !arg.stack);
   const argsString = args
     .map((arg: unknown) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
     .join(' ');
 
-  return `${formattedDuration} | ${formattedTimestamp} [${info.level}]: ${info.message} ${argsString}`;
+  return `${chalk.bold(formattedTimestamp)} [${info.level}]: ${chalk.magenta(info.message)} ${chalk.blue(`(${formattedDuration})`)}${!info.level?.includes('info') ? '\n' + chalk.dim(stack) : ''}${argsString ? '\n' + argsString : ''}`;
 });
 
 function removeLines(stack?: string, num: number = 2): string {
@@ -48,12 +51,17 @@ function removeLines(stack?: string, num: number = 2): string {
   return stack.split('\n').slice(num).join('\n');
 }
 
-function cleanStackTrace(stack?: string): string {
+function cleanStackTrace(stack?: string, trim = true): string {
   if (!stack) return '';
-  const cwd = process.cwd();
   return stack
     .split('\n')
-    .map((line) => line.replace(cwd, '').trim().replace(/\(.*\/node_modules\//, '(/node_modules/'))
+    .map((line) => {
+      let cleaned = line.replace(trimPath, '').replace(/\((\w+)\/src\//, '(@$1/src/').replace(/\(.*\/node_modules\//, '(/node_modules/');
+      if (trim) {
+        return cleaned.trim();
+      }
+      return cleaned;
+    })
     .join('\n');
 }
 
@@ -65,7 +73,10 @@ function getStackTrace(meta: Record<string, any>): string {
 
 // Console transport
 const consoleTransport: transports.ConsoleTransportInstance = new transports.Console({
-  format: format.combine(format.colorize(), durationFormat),
+  format: format.combine(
+    format.colorize(),
+    durationFormat
+  ),
 });
 
 class ElasticsearchTransport extends Transport {
@@ -77,14 +88,13 @@ class ElasticsearchTransport extends Transport {
   }
 
   log(context: any, callback: () => void) {
-    setImmediate(() => {
-      this.emit('logged', context);
-    });
+    setImmediate(() => this.emit('logged', context));
 
     if (!isDev && (context.level === 'error' || context.level === 'warn')) {
+      const stack = getStackTrace(context);
       const logData: LogData = {
+        stack,
         message: context.message,
-        stack: context.stack,
         service: context.service,
         level: context.level,
         uncaughtException: !!context.uncaughtException,
@@ -127,6 +137,7 @@ const esTransport = new ElasticsearchTransport();
 
 // Logger instance
 const logger: Logger = createLogger({
+  level: isDev ? 'debug' : 'info',
   format: format.combine(
     format.errors({ stack: true }),
     format.splat(),
@@ -152,18 +163,20 @@ const logger: Logger = createLogger({
 
 const customLogger = {
   error: (message: string, meta: Record<string, any> = {}) => {
-    const stack = getStackTrace(meta);
-    logger.error(meta.message ?? message, { ...meta, stack });
+    meta.stack = meta.stack ?? new Error().stack;
+    logger.error(meta.message ?? message, meta);
   },
   warn: (message: string, meta: Record<string, any> = {}) => {
-    const stack = getStackTrace(meta);
-    logger.warn(meta.message ?? message, { ...meta, stack });
+    meta.stack = meta.stack ?? new Error().stack;
+    logger.warn(meta.message ?? message, meta);
   },
   info: (message: string, meta: Record<string, any> = {}) => {
-    logger.info(meta.message ?? message, { ...meta });
+    meta.stack = meta.stack ?? new Error().stack;
+    logger.info(meta?.message ?? message, meta);
   },
   debug: (message: string, meta: Record<string, any> = {}) => {
-    logger.debug(meta.message ?? message, { ...meta });
+    meta.stack = meta.stack ?? new Error().stack;
+    logger.debug(meta?.message ?? message, meta);
   },
 };
 

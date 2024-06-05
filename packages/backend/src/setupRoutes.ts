@@ -55,10 +55,10 @@ export function setupRoutes(app: Express): void {
   });
 
   app.get('/v1/error', async (req: Request, res: Response) => {
-    logger.error('error');
-    logger.debug('debug')
-    logger.info('info')
-    logger.warn('warn')
+    logger.error('This is an error log');
+    logger.debug('this is for debugging')
+    logger.info('this should be informational')
+    logger.warn('this is a warning')
     res.json([]);
   });
 }
