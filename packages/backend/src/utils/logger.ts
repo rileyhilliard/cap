@@ -90,6 +90,7 @@ class ElasticsearchTransport extends Transport {
   log(context: any, callback: () => void) {
     setImmediate(() => this.emit('logged', context));
 
+    // only log errors and warnings to Elasticsearch in production
     if (!isDev && (context.level === 'error' || context.level === 'warn')) {
       const stack = getStackTrace(context);
       const logData: LogData = {
@@ -137,6 +138,7 @@ const esTransport = new ElasticsearchTransport();
 
 // Logger instance
 const logger: Logger = createLogger({
+  // log debug level and above in development; info level and above in production
   level: isDev ? 'debug' : 'info',
   format: format.combine(
     format.errors({ stack: true }),
