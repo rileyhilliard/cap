@@ -53,4 +53,12 @@ export function setupRoutes(app: Express): void {
     const results = await es.data.get(req.params.id);
     res.json(results);
   });
+
+  app.get('/v1/error', async (req: Request, res: Response) => {
+    logger.error('This is an error log');
+    logger.debug('this is for debugging')
+    logger.info('this should be informational')
+    logger.warn('this is a warning')
+    res.json([]);
+  });
 }

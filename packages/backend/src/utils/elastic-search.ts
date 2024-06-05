@@ -133,19 +133,16 @@ class ElasticsearchService {
     const host = process.env.ELASTIC ?? devLocalHost;
 
     if (!isDev && host === devLocalHost) {
-      logger.error(
+      console.warn(new Error(
         `elasticsearch: production served with the dev elasticsearch host (${devLocalHost}). It should be something like http://<elasticsearch docker container name>:9200`,
-      );
+      ));
     }
-
-    logger.info(`elasticsearch: connecting to ${host}`);
 
     this.client = new Client({ node: host });
   }
 
   public static getInstance(): ElasticsearchService {
     if (!ElasticsearchService.instance) {
-      logger.info('Creating elastic search client');
       ElasticsearchService.instance = new ElasticsearchService();
     }
     return ElasticsearchService.instance;
