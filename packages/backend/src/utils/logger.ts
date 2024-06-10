@@ -38,7 +38,7 @@ const durationFormat = format.printf((info) => {
   }
 
   const stack = removeLines(cleanStackTrace(info?.stack ?? new Error().stack, false), 2)
-  const args = (info[Symbol.for('splat')] || []).filter((arg) => !arg.stack);
+  const args = (info[Symbol.for('splat')] || []).filter((arg: { stack: string }) => !arg.stack);
   const argsString = args
     .map((arg: unknown) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
     .join(' ');
