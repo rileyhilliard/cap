@@ -1442,6 +1442,7 @@ __metadata:
     "@types/cors": "npm:^2.8.17"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
+    "@types/lodash": "npm:^4"
     "@types/node": "npm:^20.12.13"
     "@types/node-schedule": "npm:^2.1.7"
     "@types/supertest": "npm:^6.0.2"
@@ -1458,6 +1459,7 @@ __metadata:
     graphql: "npm:^16.8.1"
     graphql-scalars: "npm:^1.23.0"
     jest: "npm:^29.7.0"
+    lodash: "npm:^4.17.21"
     mongoose: "npm:^8.3.3"
     nock: "npm:^13.5.4"
     node-fetch: "npm:^3.3.2"
@@ -3754,6 +3756,13 @@ __metadata:
   version: 4.0.9
   resolution: "@types/js-yaml@npm:4.0.9"
   checksum: 10/a0ce595db8a987904badd21fc50f9f444cb73069f4b95a76cc222e0a17b3ff180669059c763ec314bc4c3ce284379177a9da80e83c5f650c6c1310cafbfaa8e6
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:^4":
+  version: 4.17.5
+  resolution: "@types/lodash@npm:4.17.5"
+  checksum: 10/10e2e9cbeb16998026f4071f9f5f2a38b651eba15302f512e0b8ab904c07c197ca0282d2821f64e53c2b692d7046af0a1ce3ead190fb077cbe4036948fce1924
   languageName: node
   linkType: hard
 

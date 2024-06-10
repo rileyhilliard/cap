@@ -1,6 +1,8 @@
 import { Client, estypes } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
 import { isValidUrl, isDev } from '@utils/helpers';
+import { startElastic, stopElastic } from '@utils/docker';
+import { debounce } from 'lodash';
 
 function inferElasticsearchFieldType(value: any): string {
   if (typeof value === 'number') {
@@ -119,7 +121,10 @@ export function responseTransformer(
 
 class ElasticsearchService {
   private static instance: ElasticsearchService;
-  private client: Client;
+  private client: Client | null;
+  private host: string;
+  private autoCloseConnection: () => void;
+  private setupConnectionPromise: Promise<void> | null;
 
   private constructor() {
     if (ElasticsearchService.instance) {
@@ -130,15 +135,18 @@ class ElasticsearchService {
 
     const devLocalHost = 'http://localhost:9200';
     // process?.env?.ELASTIC is set in pm2.config.cjs
-    const host = process.env.ELASTIC ?? devLocalHost;
+    this.host = process.env.ELASTIC ?? devLocalHost;
 
-    if (!isDev && host === devLocalHost) {
+    if (!isDev && this.host === devLocalHost) {
       console.warn(new Error(
         `elasticsearch: production served with the dev elasticsearch host (${devLocalHost}). It should be something like http://<elasticsearch docker container name>:9200`,
       ));
     }
 
-    this.client = new Client({ node: host });
+    const FIVE_MINUTES = 60000 * 5;
+    this.autoCloseConnection = debounce(this._close, FIVE_MINUTES, { leading: false, trailing: true });
+    this.client = null;
+    this.setupConnectionPromise = null;
   }
 
   public static getInstance(): ElasticsearchService {
@@ -151,6 +159,7 @@ class ElasticsearchService {
   public sources = {
     get: async (source?: string, dataset?: string): Promise<ElasticsearchDocument | undefined> => {
       logger.debug(`Source ${source} ${dataset}: fetching source`);
+      await this.setupConnection();
       try {
         const query = {
           bool: {
@@ -183,7 +192,8 @@ class ElasticsearchService {
   };
 
   public validate = {
-    dataset: (dataset: DatasetSchema) => {
+    dataset: async (dataset: DatasetSchema) => {
+      await this.setupConnection();
       if (!dataset || !dataset.records || !Array.isArray(dataset.records)) {
         throw new Error(
           'Invalid dataset. A dataset must be at minimum an object with a records field that is an array.',
@@ -194,6 +204,7 @@ class ElasticsearchService {
 
   public index = {
     create: async (indexName: string, records?: unknown[], _options?: { inferTypes: boolean }): Promise<void> => {
+      await this.setupConnection();
       const options = _options ?? { inferTypes: true };
       logger.debug(`Index ${indexName} creating index`);
       try {
@@ -231,6 +242,7 @@ class ElasticsearchService {
       dataset: DatasetSchema,
       _options?: { inferTypes: boolean },
     ): Promise<estypes.BulkResponse[] | undefined> => {
+      await this.setupConnection();
       const options = _options ?? { inferTypes: true };
       this.validate.dataset(dataset);
 
@@ -308,6 +320,7 @@ class ElasticsearchService {
     },
 
     delete: async (indexName: string, document: ElasticsearchDocument): Promise<estypes.DeleteResponse | undefined> => {
+      await this.setupConnection();
       try {
         const response = await this.client.delete({
           index: indexName,
@@ -321,9 +334,11 @@ class ElasticsearchService {
         logger.error(`Index ${indexName}: Error deleting document ${JSON.stringify(document)}:`, error);
         return undefined;
       }
+
     },
 
     deleteIndex: async (indexName: string): Promise<void> => {
+      await this.setupConnection();
       try {
         await this.client.indices.delete({ index: indexName });
         logger.debug('Index deleted:', indexName);
@@ -335,6 +350,7 @@ class ElasticsearchService {
     },
 
     schema: async (index: string): Promise<estypes.IndicesGetMappingResponse | undefined> => {
+      await this.setupConnection();
       logger.debug(`Index ${index} fetching schema`);
       try {
         const response = await this.client.indices.getMapping({ index });
@@ -348,6 +364,7 @@ class ElasticsearchService {
       indexName: string,
       newMetadata: Record<string, any>,
     ): Promise<estypes.IndicesPutMappingResponse | undefined> => {
+      await this.setupConnection();
       logger.debug(`Index ${indexName}: Updating metadata`);
       try {
         await this.index.create(indexName);
@@ -370,6 +387,7 @@ class ElasticsearchService {
 
   public data = {
     metadata: async (indexName: string): Promise<Record<string, any>> => {
+      await this.setupConnection();
       try {
         const meta = await this.client.indices.get({
           index: indexName,
@@ -385,6 +403,7 @@ class ElasticsearchService {
       _query?: estypes.QueryDslQueryContainer,
       _aggs?: estypes.AggregationsAggregationContainer,
     ): Promise<estypes.SearchResponse> => {
+      await this.setupConnection();
       const client = this;
 
       const query = _query ?? {
@@ -445,6 +464,7 @@ class ElasticsearchService {
       body: estypes.SearchRequest,
       size: number = 1000,
     ): Promise<estypes.SearchResponse<unknown>> => {
+      await this.setupConnection();
       logger.debug(`es: querying data from ${indexName}`);
       body.size = body.size ?? size; // Ensure the size is set in the body, defaulting to the function parameter
 
@@ -467,6 +487,7 @@ class ElasticsearchService {
       query: estypes.QueryDslQueryContainer = { match_all: {} },
       size: number = 1000,
     ): Promise<DatasetSchema | void> => {
+      await this.setupConnection();
       logger.debug(`es: fetching data from ${indexName}`);
       const body = {
         query,
@@ -507,6 +528,7 @@ class ElasticsearchService {
       query: estypes.QueryDslQueryContainer = { match_all: {} },
       size: number = 1,
     ): Promise<KeyValuePair<unknown> | void> => {
+      await this.setupConnection();
       try {
         // TODO: figure out why promise.all isnt properly awaiting, and make these in parallel
         const response = await this.client.search<estypes.SearchResponse<estypes.SearchResponse>>({
@@ -528,6 +550,7 @@ class ElasticsearchService {
     },
 
     mutate: async (indexName: string, field: string) => {
+      await this.setupConnection();
       const { records } = await this.data.get(indexName);
 
       const mutatedRecords = records.map((record: ElasticsearchDocument) => {
@@ -543,6 +566,7 @@ class ElasticsearchService {
 
   public utility = {
     dedupe: async (indexName: string, field: string): Promise<void> => {
+      await this.setupConnection();
       try {
         // Query the index to find duplicate records based on the "url" field
         const response = await this.client.search({
@@ -600,6 +624,7 @@ class ElasticsearchService {
   };
 
   public async listIndices() {
+    await this.setupConnection();
     const indexes = await this.client.cat.indices({
       format: 'json',
     });
@@ -626,6 +651,7 @@ class ElasticsearchService {
     luceneQuery: string,
     size: number = 1000,
   ): Promise<Record<string, unknown>[]> {
+    await this.setupConnection();
     const indexes = Array.isArray(indexNames) ? indexNames.join(',') : indexNames;
     logger.debug(`Querying index(es) ${indexNames} with query: ${luceneQuery}`);
     try {
@@ -646,6 +672,72 @@ class ElasticsearchService {
       logger.error(`Error querying index ${indexes}:`, error);
       return [];
     }
+  }
+
+  private async setupConnection() {
+    // auto close after 5 minutes of inactivity
+    // this is on a debounce so it will reset the 5 min timeout every time it's called
+    this.autoCloseConnection();
+
+    if (!this.setupConnectionPromise) {
+      this.setupConnectionPromise = new Promise(async (resolve) => {
+        try {
+          await this.client.ping();
+          console.log('Elasticsearch connection already running, no need to set it up again');
+          resolve(null);
+          this.setupConnectionPromise = null;
+          return;
+        } catch (error) {
+          startElastic();
+        }
+        while (true) {
+          try {
+            await this.waitForElasticsearchReady();
+            this.client = new Client({ node: this.host });
+            await this.client.ping();
+            console.log('Elasticsearch connection established');
+            resolve(null);
+            this.setupConnectionPromise = null;
+            break;
+          } catch (error) {
+            console.error('Elasticsearch not ready, retrying in 5 seconds...');
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          }
+        }
+      });
+    }
+    return this.setupConnectionPromise;
+  }
+
+  private async waitForElasticsearchReady() {
+    const CHECK_INTERVAL = 1000;
+    return new Promise<void>((resolve) => {
+      const checkReadyStatus = () => {
+        const url = `${this.host}/_cluster/health`;
+        fetch(url)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data?.status === 'green' || data?.status === 'yellow') {
+              resolve();
+            } else {
+              setTimeout(checkReadyStatus, CHECK_INTERVAL);
+            }
+          })
+          .catch((error) => {
+            console.count(error.message);
+            setTimeout(checkReadyStatus, CHECK_INTERVAL);
+          });
+      };
+      checkReadyStatus();
+    });
+  }
+
+  private async _close() {
+    logger.debug('Elasticsearch connection closing');
+    await this.client?.close();
+    this.client = null;
+    stopElastic();
+    logger.debug('Elasticsearch connection closed');
   }
 }
 

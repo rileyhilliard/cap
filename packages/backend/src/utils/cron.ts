@@ -1,9 +1,9 @@
 import schedule from 'node-schedule';
 import logger from '@utils/logger';
 import { runJob } from '@utils/job';
+import { startElastic, stopElastic } from '@utils/docker';
 
 let started = false;
-
 export async function startCron() {
   if (started) return;
   started = true;
