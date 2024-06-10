@@ -123,7 +123,7 @@ class ElasticsearchService {
   private static instance: ElasticsearchService;
   private client: Client | null;
   private host: string;
-  private closeConnection: () => void;
+  private autoCloseConnection: () => void;
   private setupConnectionPromise: Promise<void> | null;
 
   private constructor() {
@@ -144,10 +144,9 @@ class ElasticsearchService {
     }
 
     const FIVE_MINUTES = 60000 * 5;
-    this.closeConnection = debounce(this._close, FIVE_MINUTES, { leading: false, trailing: true });
+    this.autoCloseConnection = debounce(this._close, FIVE_MINUTES, { leading: false, trailing: true });
     this.client = null;
     this.setupConnectionPromise = null;
-    this.setupConnection();
   }
 
   public static getInstance(): ElasticsearchService {
@@ -188,8 +187,6 @@ class ElasticsearchService {
       } catch (error) {
         logger.error(`Source ${source} ${dataset}: Error fetching source:`, error);
         return undefined;
-      } finally {
-        await this.closeConnection();
       }
     },
   };
@@ -198,12 +195,10 @@ class ElasticsearchService {
     dataset: async (dataset: DatasetSchema) => {
       await this.setupConnection();
       if (!dataset || !dataset.records || !Array.isArray(dataset.records)) {
-        await this.closeConnection();
         throw new Error(
           'Invalid dataset. A dataset must be at minimum an object with a records field that is an array.',
         );
       }
-      await this.closeConnection();
     },
   };
 
@@ -240,7 +235,6 @@ class ElasticsearchService {
       } catch (error) {
         logger.error(`Index ${indexName}: An error occurred:`, error);
       }
-      await this.closeConnection();
     },
 
     upsert: async (
@@ -323,8 +317,6 @@ class ElasticsearchService {
         logger.error(`Index ${indexName}: Error upserting documents:`, error);
         return undefined;
       }
-
-      await this.closeConnection();
     },
 
     delete: async (indexName: string, document: ElasticsearchDocument): Promise<estypes.DeleteResponse | undefined> => {
@@ -341,8 +333,6 @@ class ElasticsearchService {
       } catch (error) {
         logger.error(`Index ${indexName}: Error deleting document ${JSON.stringify(document)}:`, error);
         return undefined;
-      } finally {
-        await this.closeConnection();
       }
 
     },
@@ -356,8 +346,6 @@ class ElasticsearchService {
         if (!error?.message?.includes('index_not_found_exception')) {
           console.error('Error deleting index:', error);
         }
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -369,8 +357,6 @@ class ElasticsearchService {
         return response;
       } catch (error) {
         logger.error('Error fetching index schema:', error);
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -395,8 +381,6 @@ class ElasticsearchService {
         });
       } catch (error) {
         logger.error(`Index ${indexName}: Error updating metadata:`, error);
-      } finally {
-        await this.closeConnection();
       }
     },
   };
@@ -411,8 +395,6 @@ class ElasticsearchService {
         return meta[indexName]?.mappings?._meta ?? {};
       } catch (error) {
         return {};
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -474,8 +456,7 @@ class ElasticsearchService {
             aggs: aggs,
           },
         })
-        .catch((e) => e)
-        .finally(() => client.closeConnection());
+        .catch((e) => e);
     },
 
     query: async (
@@ -498,8 +479,6 @@ class ElasticsearchService {
           logger.error(`Index ${indexName} not found`);
         }
         return error;
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -541,8 +520,6 @@ class ElasticsearchService {
         }
         logger.error(`Index ${indexName}: Error fetching data:`, error);
         throw error;
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -569,8 +546,6 @@ class ElasticsearchService {
         }
 
         throw error;
-      } finally {
-        await this.closeConnection();
       }
     },
 
@@ -585,7 +560,7 @@ class ElasticsearchService {
         return record;
       });
 
-      return this.index.upsert(indexName, { records: mutatedRecords }).finally(() => this.closeConnection());
+      return this.index.upsert(indexName, { records: mutatedRecords });
     },
   };
 
@@ -644,8 +619,6 @@ class ElasticsearchService {
         return results;
       } catch (error) {
         console.error('Error deleting duplicate documents:', error);
-      } finally {
-        await this.closeConnection();
       }
     },
   };
@@ -663,7 +636,6 @@ class ElasticsearchService {
       indexMap[index] = metadata;
     });
     await Promise.all(promises);
-    await this.closeConnection();
     return indexMap;
   }
 
@@ -699,12 +671,14 @@ class ElasticsearchService {
     } catch (error) {
       logger.error(`Error querying index ${indexes}:`, error);
       return [];
-    } finally {
-      await this.closeConnection();
     }
   }
 
   private async setupConnection() {
+    // auto close after 5 minutes of inactivity
+    // this is on a debounce so it will reset the 5 min timeout every time it's called
+    this.autoCloseConnection();
+
     if (!this.setupConnectionPromise) {
       this.setupConnectionPromise = new Promise(async (resolve) => {
         try {
@@ -724,7 +698,6 @@ class ElasticsearchService {
             console.log('Elasticsearch connection established');
             resolve(null);
             this.setupConnectionPromise = null;
-            this.closeConnection(); // auto close after 5 minutes of inactivity
             break;
           } catch (error) {
             console.error('Elasticsearch not ready, retrying in 5 seconds...');
@@ -737,7 +710,8 @@ class ElasticsearchService {
   }
 
   private async waitForElasticsearchReady() {
-    return new Promise<void>((resolve, reject) => {
+    const CHECK_INTERVAL = 1000;
+    return new Promise<void>((resolve) => {
       const checkReadyStatus = () => {
         const url = `${this.host}/_cluster/health`;
         fetch(url)
@@ -746,12 +720,12 @@ class ElasticsearchService {
             if (data?.status === 'green' || data?.status === 'yellow') {
               resolve();
             } else {
-              setTimeout(checkReadyStatus, 500);
+              setTimeout(checkReadyStatus, CHECK_INTERVAL);
             }
           })
           .catch((error) => {
             console.count(error.message);
-            setTimeout(checkReadyStatus, 500);
+            setTimeout(checkReadyStatus, CHECK_INTERVAL);
           });
       };
       checkReadyStatus();
