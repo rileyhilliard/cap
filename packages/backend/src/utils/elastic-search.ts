@@ -2,7 +2,7 @@ import { Client, estypes } from '@elastic/elasticsearch';
 import logger from '@utils/logger';
 import { isValidUrl, isDev } from '@utils/helpers';
 import { startElastic, stopElastic } from '@utils/docker';
-import { debounce } from 'lodash';
+import _ from 'lodash';
 
 function inferElasticsearchFieldType(value: any): string {
   if (typeof value === 'number') {
@@ -144,7 +144,7 @@ class ElasticsearchService {
     }
 
     const FIVE_MINUTES = 60000 * 5;
-    this.autoCloseConnection = debounce(this._close, FIVE_MINUTES, { leading: false, trailing: true });
+    this.autoCloseConnection = _.debounce(this._close, FIVE_MINUTES, { leading: false, trailing: true });
     this.client = null;
     this.setupConnectionPromise = null;
   }
