@@ -1,5 +1,6 @@
 import { Express, Request, Response } from 'express';
 import { updateRegionsIndex, fetchRegion, getIndexNames } from '@utils/region';
+import { runJob } from '@utils/job';
 import ElasticSearch from '@utils/elastic-search';
 import logger from '@utils/logger';
 
@@ -18,6 +19,15 @@ export function setupRoutes(app: Express): void {
     await fetchRegion(id);
     console.timeEnd(`PUT /v1/regions/${req.params.id}`);
     return res.json({ id, added: true, ...req.body });
+  });
+
+  // Trigger a job run
+  app.post('/v1/jobs/run', async (req: Request, res: Response) => {
+    const start = performance.now();
+    await runJob();
+    const end = performance.now();
+    const timeInSeconds = (end - start) / 1000; ``
+    return res.json({ success: true, took: `${timeInSeconds} seconds` });
   });
 
   app.delete('/v1/regions/:id', async (req: Request, res: Response) => {
