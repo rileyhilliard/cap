@@ -606,8 +606,8 @@ class ElasticsearchService {
 
     const indexMap = {};
     const promises = indexes.map(async ({ index }) => {
+      if (typeof index !== 'string' || index.startsWith('.')) return;
       const metadata = await this.data.metadata(index);
-      if (index === '.geoip_databases') return;
       indexMap[index] = metadata;
     });
     await Promise.all(promises);
