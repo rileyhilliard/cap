@@ -54,9 +54,10 @@ export function setupRoutes(app: Express): void {
   });
 
   app.get('/v1/indexes', async (req: Request, res: Response) => {
-    const results = await es.listIndices();
+    const listIndices = await es.listIndices();
+    const registeredRegions = await es.data.get('registered_indexes');
 
-    res.json(results);
+    res.json({ listIndices, registeredRegions });
   });
 
   app.get('/v1/indexes/:id', async (req: Request, res: Response) => {
