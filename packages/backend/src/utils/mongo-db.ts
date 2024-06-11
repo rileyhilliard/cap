@@ -101,13 +101,16 @@ class MongoDBService {
 
       try {
         const collection = this.collection(indexName);
-        const bulkOps = records.map((doc) => ({
-          updateOne: {
-            filter: { _id: doc.id },
-            update: { $set: doc },
-            upsert: true,
-          },
-        }));
+        const bulkOps = records.map((doc) => {
+          const { _id, id, ...dockWithoutId } = doc;
+          return {
+            updateOne: {
+              filter: { _id: id },
+              update: { $set: dockWithoutId },
+              upsert: true,
+            },
+          }
+        });
 
         const res = await collection.bulkWrite(bulkOps);
         logger.debug(`Index ${indexName}: Upserted ${records.length} documents`);
@@ -153,6 +156,7 @@ class MongoDBService {
 
     updateMetadata: async (collectionName: string, newMetadata: Record<string, any>): Promise<void> => {
       logger.debug(`updateMetadata ${collectionName}: Updating metadata`);
+      const { id, _id, ...meta } = newMetadata;
       try {
         await this.index.create('metadata');
         const collection = this.collection('metadata');
@@ -160,7 +164,7 @@ class MongoDBService {
           { collection: collectionName },
           {
             $set: {
-              ...newMetadata,
+              ...meta,
               collection: collectionName
             }
           },

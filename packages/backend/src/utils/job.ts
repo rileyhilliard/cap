@@ -1,6 +1,7 @@
 import MongoDBService from '@utils/mongo-db';
 import { fetchRegion } from '@utils/region';
 import logger from '@utils/logger';
+import { isDev } from '@utils/helpers';
 
 interface RegionData {
   region: string;
@@ -97,7 +98,7 @@ export const runJob = async () => {
       logger.error(`Error syncing region "${region}":`, error);
     }
 
-    if (index < records.length - 1) {
+    if (!isDev && index < records.length - 1) {
       const delaySeconds = Math.floor(Math.random() * 50) + 10; // Random delay between 10 and 59 seconds
       logger.info(`Waiting ${delaySeconds} seconds before syncing the next region.`);
       await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));

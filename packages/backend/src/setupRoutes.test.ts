@@ -7,72 +7,72 @@ import nock from 'nock';
 let app: Express;
 
 beforeEach(() => {
-  app = express();
-  app.use(express.json());
-  setupRoutes(app);
+  // app = express();
+  // app.use(express.json());
+  // setupRoutes(app);
 
-  const elasticSearchServer = nock('http://localhost:9200');
+  // const elasticSearchServer = nock('http://localhost:9200');
 
-  // Intercept search requests
-  elasticSearchServer
-    .persist() // This will allow nock to intercept all requests, not just the first one
-    .post('/_search')
-    .reply(200, {
-      hits: {
-        total: {
-          value: 1,
-          relation: 'eq',
-        },
-        hits: [
-          {
-            _index: 'test',
-            _type: '_doc',
-            _id: '1',
-            _score: 1,
-            _source: {
-              field: 'value',
-            },
-          },
-        ],
-      },
-    });
+  // // Intercept search requests
+  // elasticSearchServer
+  //   .persist() // This will allow nock to intercept all requests, not just the first one
+  //   .post('/_search')
+  //   .reply(200, {
+  //     hits: {
+  //       total: {
+  //         value: 1,
+  //         relation: 'eq',
+  //       },
+  //       hits: [
+  //         {
+  //           _index: 'test',
+  //           _type: '_doc',
+  //           _id: '1',
+  //           _score: 1,
+  //           _source: {
+  //             field: 'value',
+  //           },
+  //         },
+  //       ],
+  //     },
+  //   });
 
-  // Intercept document requests
-  elasticSearchServer
-    .persist()
-    .post('/_doc')
-    .reply(200, {
-      _index: 'test',
-      _type: '_doc',
-      _id: '1',
-      _version: 1,
-      result: 'created',
-      _shards: {
-        total: 2,
-        successful: 1,
-        failed: 0,
-      },
-      _seq_no: 0,
-      _primary_term: 1,
-    });
+  // // Intercept document requests
+  // elasticSearchServer
+  //   .persist()
+  //   .post('/_doc')
+  //   .reply(200, {
+  //     _index: 'test',
+  //     _type: '_doc',
+  //     _id: '1',
+  //     _version: 1,
+  //     result: 'created',
+  //     _shards: {
+  //       total: 2,
+  //       successful: 1,
+  //       failed: 0,
+  //     },
+  //     _seq_no: 0,
+  //     _primary_term: 1,
+  //   });
 
-  elasticSearchServer
-    .persist()
-    .get('/_cat/indices')
-    .reply(200, [
-      {
-        health: 'green',
-        status: 'open',
-        index: 'test',
-        uuid: 'xHgRzRznQ2ey_PVHMzJmmQ',
-        pri: '1',
-        rep: '1',
-        'docs.count': '0',
-        'docs.deleted': '0',
-        'store.size': '230b',
-        'pri.store.size': '230b',
-      },
-    ]);
+  // elasticSearchServer
+  //   .persist()
+  //   .get('/_cat/indices')
+  //   .reply(200, [
+  //     {
+  //       health: 'green',
+  //       status: 'open',
+  //       index: 'test',
+  //       uuid: 'xHgRzRznQ2ey_PVHMzJmmQ',
+  //       pri: '1',
+  //       rep: '1',
+  //       'docs.count': '0',
+  //       'docs.deleted': '0',
+  //       'store.size': '230b',
+  //       'pri.store.size': '230b',
+  //     },
+  //   ]);
 });
 
 describe('Routes', () => {

@@ -27,7 +27,8 @@ export function setupRoutes(app: Express): void {
     const start = performance.now();
     await runJob();
     const end = performance.now();
-    const timeInSeconds = (end - start) / 1000; ``
+    const timeInSeconds = (end - start) / 1000;
+    logger.info(`/v1/jobs/run ${timeInSeconds} seconds`)
     return res.json({ success: true, took: `${timeInSeconds} seconds` });
   });
 

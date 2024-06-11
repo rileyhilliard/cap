@@ -180,27 +180,26 @@ export const updateRegionsIndex = async (regionId: string, options: any) => {
     },
   };
 
-  await mongo.index.upsert('registered_indexes', payload, { inferTypes: false });
+  await mongo.index.upsert('registered_indexes', payload);
 };
 
-async function getRegionConfig(regionId: string): Promise<RegionConfig> {
+async function getRegionConfig(regionId: string): Promise<RegionConfig | void> {
   const mongo = MongoDBService.getInstance();
-  const result = await mongo.data.query('registered_indexes', {
-    query: {
-      term: {
-        _id: hasher(regionId),
-      },
-    },
-  });
+  const regions = await mongo.data.get('registered_indexes');
+  const config = (regions?.records ?? []).filter((r: RegionConfig) => r.region === regionId)?.at(0);
+  if (!config) {
+    logger.error(`no config found for ${regionId}`);
+    return;
+  }
 
-  return result.hits.hits.at(0)?._source as RegionConfig;
+  return config as RegionConfig;
 }
 
 export async function fetchRegion(regionId: string) {
   const proceed = await shouldRun(regionId);
   if (!proceed) {
-    logger.info(`Skipping fetching region ${regionId} as it was updated less than a day ago`);
-    return;
+    logger.warn(`${regionId} was updated less than a day ago, this is currently a warning, but should eventually be an error`);
+    // return;
   }
 
   const options = await getRegionConfig(regionId);
