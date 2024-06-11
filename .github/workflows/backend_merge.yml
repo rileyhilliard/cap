@@ -196,7 +196,7 @@ jobs:
             # Check if the repository has already been cloned
             if [ ! -d "estatemetrics" ]; then
               # Clone the private repository
-              git clone git@github.com:rileyhilliard/estatemetrics.git
+              git clone https://github.com/rileyhilliard/estatemetrics.git
               cd estatemetrics
             else
               # Navigate into the repository directory
