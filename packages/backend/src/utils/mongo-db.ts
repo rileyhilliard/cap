@@ -24,8 +24,8 @@ class MongoDBService {
         'A MongoDBService instance has already been created. Use MongoDBService.getInstance() to get its instance',
       );
     }
-    //                                                              dev         prod?
-    const uri = process.env.MONGODB_URI || `mongodb://${isDev ? 'localhost' : 'mongodb'}:27017`;
+
+    const uri = process.env.MONGODB_URI || (isDev ? `mongodb://localhost:27017` : 'mongodb://admin:password@mongodb:27017');
     if (!uri) {
       throw new Error('MONGODB_URI environment variable is not set');
     }
