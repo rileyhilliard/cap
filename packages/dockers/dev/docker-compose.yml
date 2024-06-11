@@ -17,5 +17,16 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
       - "5601:5601"
+  mongodb:
+    image: mongo:5.0.27
+    container_name: mongodb_estatemetrics
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodb-data-estatemetrics:/data/db
+    ports:
+      - "27017:27017"
 volumes:
   elasticsearch-data-estatemetrics:
+  mongodb-data-estatemetrics:

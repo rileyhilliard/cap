@@ -2,10 +2,12 @@ import { Express, Request, Response } from 'express';
 import { updateRegionsIndex, fetchRegion, getIndexNames } from '@utils/region';
 import { runJob } from '@utils/job';
 import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import logger from '@utils/logger';
 
 export function setupRoutes(app: Express): void {
   const es = ElasticSearch.getInstance();
+  const mdb = MongoDBService.getInstance();
   logger.info('Express: Setting up routes');
 
   app.put('/v1/regions/:id', async (req: Request, res: Response) => {
@@ -44,6 +46,17 @@ export function setupRoutes(app: Express): void {
     const results = await es.data.get('registered_indexes');
 
     res.json(results);
+  });
+
+  app.get('/v1/migrate', async (req: Request, res: Response) => {
+    await mdb.connect();
+    const results = await es.listIndices();
+    const upserts = await Promise.all(Object.keys(results).map(async (i) => {
+      const data = await es.data.get(i);
+      return data && mdb.index.upsert(i, data);
+    }));
+
+    res.json(upserts);
   });
 
   app.get('/v1/regions/:id', async (req: Request, res: Response) => {
