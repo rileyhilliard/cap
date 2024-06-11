@@ -1,6 +1,6 @@
 import logger from '@utils/logger';
 import { Cache } from '@utils/cache';
-import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import fetch from 'node-fetch';
 import { timestamp, normalizeAddress, hasher } from '@utils/helpers';
 import type { RedfinRental, RedfinProperty, BaseProps } from '@backend/types/property-types';
@@ -52,8 +52,8 @@ function responseTransformer(response: RedfinPropertyResponse): RedfinProperty[]
 }
 
 export async function scrapeRedfinProperties(index: string, options: RedfinOptions): Promise<RedfinProperty[]> {
-  const es = ElasticSearch.getInstance();
-  const meta = await es.data.metadata(index);
+  const mongo = MongoDBService.getInstance();
+  const meta = await mongo.data.metadata(index);
   const URL = meta?.url || options?.url;
 
   if (typeof URL !== 'string') {
@@ -63,15 +63,15 @@ export async function scrapeRedfinProperties(index: string, options: RedfinOptio
   }
 
   try {
-    // const esData = await es.data.get(index);
+    // const esData = await mongo.data.get(index);
     // if (esData) {
     //   return esData;
     // }
     const cachedData = (await cache.get(URL)) as RedfinPropertyResponse | void;
     if (cachedData) {
-      await es.index.deleteIndex(index);
+      await mongo.index.deleteIndex(index);
       const processed = responseTransformer(cachedData);
-      es.index.upsert(index, {
+      mongo.index.upsert(index, {
         records: processed,
         meta: {
           url: options.url,
@@ -81,7 +81,7 @@ export async function scrapeRedfinProperties(index: string, options: RedfinOptio
     }
 
     const properties = await fetchProperties(URL, false);
-    es.index.upsert(index, {
+    mongo.index.upsert(index, {
       records: properties,
       meta: {
         url: options.url,
@@ -127,8 +127,8 @@ function rentalResponseTransformer(payload: RedfinRentalResponse): RedfinRental[
 }
 //https://www.redfin.com/stingray/api/v1/search/rentals?al=1&includeKeyFacts=true&isRentals=true&market=austin&num_homes=350&ord=days-on-redfin-desc&page_number=1&poly=-97.75584%2030.27237%2C-97.7155%2030.27237%2C-97.7155%2030.32195%2C-97.75584%2030.32195%2C-97.75584%2030.27237&sf=1,2,3,5,6,7&start=0&status=9&uipt=1,2,3,4&use_max_pins=true&user_poly=-97.735345%2030.279787%2C-97.753112%2030.284753%2C-97.752768%2030.289719%2C-97.747618%2030.292609%2C-97.748820%2030.297204%2C-97.746073%2030.300909%2C-97.740580%2030.300465%2C-97.737919%2030.301799%2C-97.731654%2030.312024%2C-97.719723%2030.308838%2C-97.712685%2030.297945%2C-97.712256%2030.292609%2C-97.717835%2030.285494%2C-97.721011%2030.284605%2C-97.725131%2030.286309%2C-97.731225%2030.278972%2C-97.735345%2030.279787&v=8&zoomLevel=14
 export async function scrapeRedfinRentals(index: string, options: RedfinOptions): Promise<RedfinRental[]> {
-  const es = ElasticSearch.getInstance();
-  const meta = await es.data.metadata(index);
+  const mongo = MongoDBService.getInstance();
+  const meta = await mongo.data.metadata(index);
   const URL = meta?.url || options?.url;
 
   if (typeof URL !== 'string') {
@@ -144,7 +144,7 @@ export async function scrapeRedfinRentals(index: string, options: RedfinOptions)
     }
 
     const properties = await fetchProperties(URL, true);
-    es.index.upsert(index, {
+    mongo.index.upsert(index, {
       records: properties,
       meta: {
         ...(options.meta ?? {}),

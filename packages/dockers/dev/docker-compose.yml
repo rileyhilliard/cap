@@ -1,22 +1,5 @@
 version: "3.8"
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
-    container_name: EstateMetrics_elasticsearch
-    environment:
-      - discovery.type=single-node
-    volumes:
-      - elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.17.20
-    container_name: EstateMetrics_kibana
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
   mongodb:
     image: mongo:5.0.27
     container_name: EstateMetrics_mongodb
@@ -27,6 +10,23 @@ services:
       - mongodb-data-estatemetrics:/data/db
     ports:
       - "27017:27017"
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+  #   container_name: EstateMetrics_elasticsearch
+  #   environment:
+  #     - discovery.type=single-node
+  #   volumes:
+  #     - elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:7.17.20
+  #   container_name: EstateMetrics_kibana
+  #   environment:
+  #     - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  #   ports:
+  #     - "5601:5601"
 volumes:
-  elasticsearch-data-estatemetrics:
+  # elasticsearch-data-estatemetrics:
   mongodb-data-estatemetrics:

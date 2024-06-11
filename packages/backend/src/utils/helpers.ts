@@ -37,9 +37,9 @@ export function stringToNumber(stringNumber: string | number): number {
 export function percentile(numbers: number[], percentile: number, winsorize = true): number {
   if (winsorize) {
     const winsorizedNumbers = winsorizeData(numbers);
-    return calculatePercentile(winsorizedNumbers, percentile);
+    return decimals(calculatePercentile(winsorizedNumbers, percentile));
   } else {
-    return calculatePercentile(numbers, percentile);
+    return decimals(calculatePercentile(numbers, percentile));
   }
 }
 
