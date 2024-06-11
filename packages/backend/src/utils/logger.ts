@@ -2,7 +2,7 @@ import Transport from 'winston-transport';
 import { createLogger, format, transports, Logger } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import util from 'util';
-import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import { timestamp, hasher, isDev } from '@utils/helpers';
 import chalk from 'chalk';
 
@@ -88,7 +88,7 @@ class ElasticsearchTransport extends Transport {
 
   constructor() {
     super(...arguments);
-    this.esService = ElasticSearch.getInstance();
+    this.esService = MongoDBService.getInstance();
   }
 
   log(context: any, callback: () => void) {

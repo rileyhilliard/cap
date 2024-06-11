@@ -1,4 +1,4 @@
-import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import { fetchRegion } from '@utils/region';
 import logger from '@utils/logger';
 
@@ -81,8 +81,8 @@ interface RegionData {
 }
 
 export const runJob = async () => {
-  const es = ElasticSearch.getInstance();
-  const registeredRegions = await es.data.get('registered_indexes');
+  const mongo = MongoDBService.getInstance();
+  const registeredRegions = await mongo.data.get('registered_indexes');
 
   const records = registeredRegions?.records ?? ([] as RegionData[]);
   logger.info(

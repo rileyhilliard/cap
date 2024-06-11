@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { scrapeRedfinProperties, scrapeRedfinRentals } from '@backend/utils/redfin';
 import { scrapeZillowRentals, scrapeZillowProperties, decorateProperties } from '@utils/zillow';
-import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import { generateRentalReport } from '@utils/market-report';
 import { mergeRecords, timestamp, hasher, isDev } from '@utils/helpers';
 import type { ZillowRentalOptions, ZillowPropertyOptions } from '@utils/zillow';
@@ -138,17 +138,17 @@ const getIndexData = (
 };
 
 const upsertData = async (indexData: ReturnType<typeof getIndexData>) => {
-  const es = ElasticSearch.getInstance();
+  const mongo = MongoDBService.getInstance();
 
   for (const { index, records, meta } of indexData) {
-    await es.index.upsert(index, { records, meta });
+    await mongo.index.upsert(index, { records, meta });
   }
 };
 
 export const shouldRun = async (regionId: string): Promise<boolean> => {
-  const es = ElasticSearch.getInstance();
+  const mongo = MongoDBService.getInstance();
   const TwentyThreeHours = 23 * 60 * 60 * 1000;
-  const prevMeta = await es.data.metadata(regionId);
+  const prevMeta = await mongo.data.metadata(regionId);
   const lastRan = new Date(prevMeta?.lastRan ?? 0).getTime();
 
   // dont run more than once per day
@@ -156,7 +156,7 @@ export const shouldRun = async (regionId: string): Promise<boolean> => {
 }
 
 export const updateRegionsIndex = async (regionId: string, options: any) => {
-  const es = ElasticSearch.getInstance();
+  const mongo = MongoDBService.getInstance();
   const proceed = await shouldRun(regionId);
 
   if (!proceed) {
@@ -180,12 +180,12 @@ export const updateRegionsIndex = async (regionId: string, options: any) => {
     },
   };
 
-  await es.index.upsert('registered_indexes', payload, { inferTypes: false });
+  await mongo.index.upsert('registered_indexes', payload, { inferTypes: false });
 };
 
 async function getRegionConfig(regionId: string): Promise<RegionConfig> {
-  const es = ElasticSearch.getInstance();
-  const result = await es.data.query('registered_indexes', {
+  const mongo = MongoDBService.getInstance();
+  const result = await mongo.data.query('registered_indexes', {
     query: {
       term: {
         _id: hasher(regionId),

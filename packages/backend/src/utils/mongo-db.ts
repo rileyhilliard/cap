@@ -209,15 +209,16 @@ class MongoDBService {
 
     query: async (
       indexName: string,
-      body: Filter<Document>,
-      size: number = 1000,
+      query: Document[] = []
     ): Promise<Document[]> => {
       logger.debug(`MongoDB: querying data from ${indexName}`);
-      const options: FindOptions = { limit: size };
 
       try {
         const collection = this.collection(indexName);
-        const results = await collection.find(body, options).toArray();
+        const results = await collection.aggregate(
+          query
+        ).toArray();
+
         return results;
       } catch (error: any) {
         logger.error(`Index ${indexName}: Error fetching data:`, error);
@@ -227,12 +228,12 @@ class MongoDBService {
 
     get: async (
       indexName: string,
-      query: Filter<Document> = {},
+      query: Document[] = [],
       size: number = 1000,
     ): Promise<DatasetSchema | void> => {
       logger.debug(`MongoDB: fetching data from ${indexName}`);
       try {
-        const results = await this.data.query(indexName, query, size);
+        const results = await this.data.query(indexName, query);
         const meta = await this.data.metadata(indexName);
         logger.debug(`MongoDB: returned data from ${indexName}`);
         return {

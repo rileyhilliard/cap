@@ -1,6 +1,6 @@
 import logger from '@utils/logger';
 import { Cache } from '@utils/cache';
-import ElasticSearch from '@utils/elastic-search';
+import MongoDBService from '@utils/mongo-db';
 import { ZillowProperty } from '@backend/types/property-types';
 import puppeteer from 'puppeteer';
 const cache = new Cache();
@@ -13,15 +13,15 @@ interface ZillowOptions {
 }
 
 async function devCache(index: string): Promise<ZillowProperty[]> {
-  const es = ElasticSearch.getInstance();
-  const esData = await es.data.get(index);
+  const mongo = MongoDBService.getInstance();
+  const esData = await mongo.data.get(index);
 
   // check elasticsearch first
   return (esData?.records ?? []) as ZillowProperty[];
 }
 
 export const fetchRentalData = async (index: string, options: ZillowOptions): Promise<ZillowProperty[]> => {
-  const es = ElasticSearch.getInstance();
+  const mongo = MongoDBService.getInstance();
   const esCache = await devCache(index);
   if (esCache.length) {
     return esCache;
@@ -43,7 +43,7 @@ export const fetchRentalData = async (index: string, options: ZillowOptions): Pr
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   );
-  const meta = await es.data.metadata(index);
+  const meta = await mongo.data.metadata(index);
   if (!meta?.cookies && typeof options.cookies !== 'string') {
     throw new Error('No cookies found. Please pass in a session cookie @ options.cookies');
   }
@@ -89,7 +89,7 @@ export const fetchRentalData = async (index: string, options: ZillowOptions): Pr
   const cookiesArray = (await page.cookies()) ?? [];
   const cookies = cookiesArray.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ');
   // cache.set(`${index}-meta`, { index, ...options, cookies });
-  es.index.updateMetadata(index, { cookies });
+  mongo.index.updateMetadata(index, { cookies });
 
   const results = await waitForApiCall;
   await browser.close();
@@ -97,9 +97,9 @@ export const fetchRentalData = async (index: string, options: ZillowOptions): Pr
 };
 
 async function processData(index: string, options: ZillowOptions, data: ZillowProperty[]): Promise<void> {
-  const es = ElasticSearch.getInstance();
+  const mongo = MongoDBService.getInstance();
   const date = new Date().toISOString();
-  const _recs = await es.data.get(index);
+  const _recs = await mongo.data.get(index);
   const allRecords = _recs?.records ?? [];
 
   // Process each record in parallel using Promise.all
@@ -126,7 +126,7 @@ async function processData(index: string, options: ZillowOptions, data: ZillowPr
   );
 
   // Upsert the computed data into Elasticsearch
-  await es.index.upsert(index, {
+  await mongo.index.upsert(index, {
     records: computedData,
     meta: {
       ...(options.meta ?? {}),
@@ -148,7 +148,7 @@ async function fetchBaseRecord(
   address: string,
   date: string,
 ): Promise<BaseRecord | ZillowProperty> {
-  const baseRecord = (await es.data.record(index, {
+  const baseRecord = (await mongo.data.record(index, {
     match: { address },
   })) as BaseRecord | undefined;
 

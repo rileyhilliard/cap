@@ -1,13 +1,12 @@
 import { Express, Request, Response } from 'express';
 import { updateRegionsIndex, fetchRegion, getIndexNames } from '@utils/region';
 import { runJob } from '@utils/job';
-import ElasticSearch from '@utils/elastic-search';
 import MongoDBService from '@utils/mongo-db';
 import logger from '@utils/logger';
+import { generateRentalReport } from '@utils/market-report';
 
 export function setupRoutes(app: Express): void {
-  const es = ElasticSearch.getInstance();
-  const mdb = MongoDBService.getInstance();
+  const mongo = MongoDBService.getInstance();
   logger.info('Express: Setting up routes');
 
   app.put('/v1/regions/:id', async (req: Request, res: Response) => {
@@ -36,29 +35,39 @@ export function setupRoutes(app: Express): void {
     console.time(`DELETE /v1/regions/${req.params.id}`);
     const { id } = req.params;
     const indexes = getIndexNames(id);
-    const results = await Promise.all(Object.keys(indexes).map(async (key) => es.index.deleteIndex(indexes[key])));
+    const results = await Promise.all(Object.keys(indexes).map(async (key) => mongo.index.deleteIndex(indexes[key])));
 
     console.timeEnd(`DELETE /v1/regions/${req.params.id}`);
     return res.json(results);
   });
 
   app.get('/v1/regions', async (req: Request, res: Response) => {
-    const results = await es.data.get('registered_indexes');
+    const results = await mongo.data.get('registered_indexes');
+
+    res.json(results);
+  });
+
+  app.get('/v1/report/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const mongo = MongoDBService.getInstance();
+    const indexes = getIndexNames(id);
+    const rentals = await mongo.data.get(indexes.COMBINED_RENTALS_INDEX);
+    const results = await generateRentalReport(indexes.RENTAL_REPORT_INDEX, rentals?.records ?? [])
 
     res.json(results);
   });
 
   app.get('/v1/metadata', async (req: Request, res: Response) => {
-    const results = await es.data.get('metadata');
+    const results = await mongo.data.get('metadata');
 
     res.json(results);
   });
 
   app.get('/v1/migrate', async (req: Request, res: Response) => {
-    const results = await es.listIndices();
+    const results = await mongo.listIndices();
     const upserts = await Promise.all(Object.keys(results).map(async (i) => {
-      const data = await es.data.get(i);
-      return data && mdb.index.upsert(i, data);
+      const data = await mongo.data.get(i);
+      return data && mongo.index.upsert(i, data);
     }));
 
     res.json(upserts);
@@ -66,19 +75,19 @@ export function setupRoutes(app: Express): void {
 
   app.get('/v1/regions/:id', async (req: Request, res: Response) => {
     const { COMBINED_PROPERTIES_INDEX } = getIndexNames(req.params.id);
-    const results = await es.data.get(COMBINED_PROPERTIES_INDEX);
+    const results = await mongo.data.get(COMBINED_PROPERTIES_INDEX);
 
     res.json(results);
   });
 
   app.get('/v1/indexes', async (req: Request, res: Response) => {
-    const results = await es.listIndices();
+    const results = await mongo.listIndices();
 
     res.json(results);
   });
 
   app.get('/v1/indexes/:id', async (req: Request, res: Response) => {
-    const results = await es.data.get(req.params.id);
+    const results = await mongo.data.get(req.params.id);
     res.json(results);
   });
 
