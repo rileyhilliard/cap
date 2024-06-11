@@ -148,40 +148,6 @@ class ElasticsearchService {
     return ElasticsearchService.instance;
   }
 
-  public sources = {
-    get: async (source?: string, dataset?: string): Promise<ElasticsearchDocument | undefined> => {
-      logger.debug(`Source ${source} ${dataset}: fetching source`);
-      try {
-        const query = {
-          bool: {
-            must: [] as Array<{ term: Term }>,
-          },
-        };
-
-        if (source) {
-          query.bool.must.push({ term: { 'source.keyword': source } as Term });
-        }
-
-        if (dataset) {
-          query.bool.must.push({ term: { 'dataset.keyword': dataset } as Term });
-        }
-
-        const response = await this.client.search({
-          index: 'sources',
-          body: {
-            query,
-          },
-        });
-
-        logger.debug(`Source ${source} ${dataset}: Source fetched successfully`);
-        return responseTransformer(response);
-      } catch (error) {
-        logger.error(`Source ${source} ${dataset}: Error fetching source:`, error);
-        return undefined;
-      }
-    },
-  };
-
   public validate = {
     dataset: (dataset: DatasetSchema) => {
       if (!dataset || !dataset.records || !Array.isArray(dataset.records)) {
@@ -606,8 +572,8 @@ class ElasticsearchService {
 
     const indexMap = {};
     const promises = indexes.map(async ({ index }) => {
+      if (index?.startsWith('.')) return;
       const metadata = await this.data.metadata(index);
-      if (index === '.geoip_databases') return;
       indexMap[index] = metadata;
     });
     await Promise.all(promises);
