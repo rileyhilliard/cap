@@ -9,6 +9,10 @@ import { isDev, hasher } from '@utils/helpers';
 // Yeah, metadata is technically only related to a region, not a collection, so regions should be 
 // used to store/retrieve/update metadata for a region
 
+// NOTE: most of the above is implemented, but I need to migrate the database to mongo db before 
+// refactoring the code to read and write to the metadata collection. Elasticsearch needs to be
+// removed from the job runs before the refactor can be done
+
 class MongoDBService {
   private static instance: MongoDBService;
   private client: MongoClient;
