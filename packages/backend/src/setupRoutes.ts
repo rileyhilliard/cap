@@ -48,8 +48,13 @@ export function setupRoutes(app: Express): void {
     res.json(results);
   });
 
+  app.get('/v1/metadata', async (req: Request, res: Response) => {
+    const results = await es.data.get('metadata');
+
+    res.json(results);
+  });
+
   app.get('/v1/migrate', async (req: Request, res: Response) => {
-    await mdb.connect();
     const results = await es.listIndices();
     const upserts = await Promise.all(Object.keys(results).map(async (i) => {
       const data = await es.data.get(i);

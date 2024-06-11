@@ -37,7 +37,11 @@ const durationFormat = format.printf((info) => {
     formattedDuration = `${minutes}m ${seconds}s`;
   }
 
-  const stack = removeLines(cleanStackTrace(info?.stack ?? new Error().stack, false), 2)
+  let stack = removeLines(cleanStackTrace(info?.stack ?? new Error().stack, false), 2)
+  if (isDev && info.level.includes('debug')) {
+    // debug should be less verbose: just return the first two lines of the stack
+    stack = stack.split('\n').slice(0, 1).join('\n');
+  }
   const args = (info[Symbol.for('splat')] || []).filter((arg: { stack: string }) => !arg.stack);
   const argsString = args
     .map((arg: unknown) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
@@ -163,22 +167,34 @@ const logger: Logger = createLogger({
   rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' }), consoleTransport, esTransport],
 });
 
+function log(level: 'error' | 'warn' | 'info' | 'debug', message: string, meta: Record<string, any> | unknown = {}, err: Error) {
+  if (meta instanceof Error) {
+    return logger[level](meta.message ?? message, meta);
+  }
+
+  if (meta && typeof meta === 'object') {
+    Object.keys(meta).forEach((key) => (err as any)[key] = meta[key]);
+  }
+
+  logger[level](message, err);
+}
+
 const customLogger = {
-  error: (message: string, meta: Record<string, any> = {}) => {
-    meta.stack = meta.stack ?? new Error().stack;
-    logger.error(meta.message ?? message, meta);
+  error: (message: string, meta: Record<string, any> | unknown = {}) => {
+    const err = new Error(message);
+    log('error', message, meta, err)
   },
-  warn: (message: string, meta: Record<string, any> = {}) => {
-    meta.stack = meta.stack ?? new Error().stack;
-    logger.warn(meta.message ?? message, meta);
+  warn: (message: string, meta: Record<string, any> | unknown = {}) => {
+    const err = new Error(message);
+    log('warn', message, meta, err)
   },
-  info: (message: string, meta: Record<string, any> = {}) => {
-    meta.stack = meta.stack ?? new Error().stack;
-    logger.info(meta?.message ?? message, meta);
+  info: (message: string, meta: Record<string, any> | unknown = {}) => {
+    const err = new Error(message);
+    log('info', message, meta, err)
   },
-  debug: (message: string, meta: Record<string, any> = {}) => {
-    meta.stack = meta.stack ?? new Error().stack;
-    logger.debug(meta?.message ?? message, meta);
+  debug: (message: string, meta: Record<string, any> | unknown = {}) => {
+    const err = new Error(message);
+    log('debug', message, meta, err)
   },
 };
 

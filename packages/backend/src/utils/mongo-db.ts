@@ -1,12 +1,12 @@
-import { MongoClient, Db, Collection, Document, Filter, UpdateFilter, FindOptions } from 'mongodb';
+import { type BulkWriteResult, MongoClient, Db, Collection, Document, Filter, UpdateFilter, FindOptions } from 'mongodb';
 import logger from '@utils/logger';
-import { isDev } from '@utils/helpers';
+import { isDev, hasher } from '@utils/helpers';
 
 // Left off @ right now metadata is implemented as a record in a collection: that's not great for obvious reasons
 // can metadata be stored in a separate collection? or in a separate field in the same collection unrelated to the collection?
 // My best guess is that metadata should be stored in a separate collection (probably the 'registered_indexes' collection), 
 // but I'm not sure
-// Yeah, metadata is technically only related to a region, not a collection, so registered_indexes should be 
+// Yeah, metadata is technically only related to a region, not a collection, so regions should be 
 // used to store/retrieve/update metadata for a region
 
 class MongoDBService {
@@ -20,13 +20,15 @@ class MongoDBService {
         'A MongoDBService instance has already been created. Use MongoDBService.getInstance() to get its instance',
       );
     }
-    //                                      dev                        prod?
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017' || 'mongodb://mongodb:27017';
+    //                                                              dev         prod?
+    const uri = process.env.MONGODB_URI || `mongodb://${isDev ? 'localhost' : 'mongodb'}:27017`;
     if (!uri) {
       throw new Error('MONGODB_URI environment variable is not set');
     }
 
     this.client = new MongoClient(uri);
+    this.db = this.connect();
+    logger?.debug(`Mongodb db set`, this.db);
   }
 
   public static getInstance(): MongoDBService {
@@ -36,10 +38,10 @@ class MongoDBService {
     return MongoDBService.instance;
   }
 
-  public async connect(dbName: string = 'estatemetrics'): Promise<void> {
-    await this.client.connect();
-    this.db = this.client.db(dbName);
-    logger.debug(`Connected to MongoDB database: ${dbName}`);
+  public connect(dbName: string = 'estatemetrics'): Db {
+    logger?.debug(`Mongodb connecting to: ${dbName}`)
+    this.client.connect().then(() => logger?.debug(`Mongodb connected to: ${dbName}`));
+    return this.client.db(dbName);
   }
 
   public async disconnect(): Promise<void> {
@@ -47,8 +49,8 @@ class MongoDBService {
     logger.debug('Disconnected from MongoDB');
   }
 
+  // The is MongoDB's equivalent of an index in elasticsearch
   public collection(name: string): Collection<Document> {
-
     return this.db.collection(name);
   }
 
@@ -79,7 +81,7 @@ class MongoDBService {
       indexName: string,
       dataset: DatasetSchema,
       _options?: { inferTypes: boolean },
-    ): Promise<void> => {
+    ): Promise<BulkWriteResult | void> => {
       const options = _options ?? { inferTypes: true };
       this.validate.dataset(dataset);
 
@@ -105,8 +107,9 @@ class MongoDBService {
           },
         }));
 
-        await collection.bulkWrite(bulkOps);
+        const res = await collection.bulkWrite(bulkOps);
         logger.debug(`Index ${indexName}: Upserted ${records.length} documents`);
+        return { indexName, ...res };
       } catch (error) {
         logger.error(`Index ${indexName}: Error upserting documents:`, error);
       }
@@ -145,14 +148,19 @@ class MongoDBService {
       }
     },
 
-    updateMetadata: async (indexName: string, newMetadata: Record<string, any>): Promise<void> => {
-      logger.debug(`Index ${indexName}: Updating metadata`);
+    updateMetadata: async (collectionName: string, newMetadata: Record<string, any>): Promise<void> => {
+      logger.debug(`updateMetadata ${collectionName}: Updating metadata`);
       try {
-        await this.index.create(indexName);
-        const collection = this.collection(indexName);
+        await this.index.create('metadata');
+        const collection = this.collection('metadata');
         await collection.updateOne(
-          { _id: 'metadata' },
-          { $set: newMetadata },
+          { collection: collectionName },
+          {
+            $set: {
+              ...newMetadata,
+              collection: collectionName
+            }
+          },
           { upsert: true },
         );
       } catch (error) {
@@ -162,10 +170,12 @@ class MongoDBService {
   };
 
   public data = {
-    metadata: async (indexName: string): Promise<Record<string, any>> => {
+    metadata: async (collectionName: string): Promise<Record<string, any>> => {
       try {
-        const collection = this.collection(indexName);
-        const metadata = await collection.findOne({ _id: 'metadata' });
+        const collection = this.collection('metadata');
+        const metadata = await collection.findOne({
+          collection: collectionName
+        });
         return metadata ?? {};
       } catch (error) {
         return {};
@@ -235,7 +245,7 @@ class MongoDBService {
       indexName: string,
       query: Filter<Document> = {},
       size: number = 1,
-    ): Promise<Document | void> => {
+    ): Promise<Document | null> => {
       try {
         const collection = this.collection(indexName);
         const record = await collection.findOne(query);
@@ -243,10 +253,12 @@ class MongoDBService {
       } catch (error) {
         logger.error(`Index ${indexName}: Error fetching data:`, error);
       }
+      return null;
     },
 
     mutate: async (indexName: string, field: string): Promise<void> => {
-      const { records } = await this.data.get(indexName);
+      const res = await this.data.get(indexName);
+      const { records = [] } = res ?? {};
 
       const mutatedRecords = records.map((record: Document) => {
         const recordDate = record[field];
@@ -272,7 +284,7 @@ class MongoDBService {
 
         const bulkOps = duplicates.flatMap((group) => {
           const docsToRemove = group.docs.slice(1);
-          return docsToRemove.map((doc) => ({
+          return docsToRemove.map((doc: Document) => ({
             deleteOne: { filter: { _id: doc._id } },
           }));
         });
