@@ -152,7 +152,11 @@ jobs:
 
       - name: Build and Push Docker image
         run: |
-          docker buildx build --platform linux/arm64 -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} --push .
+          docker buildx build \
+            --platform linux/arm64 \
+            -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} \
+            -t ghcr.io/${{ github.repository }}/estate-metrics:latest \
+            --push .
 
   deploy:
     runs-on: ubuntu-latest
@@ -248,4 +252,4 @@ jobs:
               -e "NODE_ENV=production" \
               --link EstateMetrics_mongodb:mongodb \
               --link EstateMetrics_elasticsearch:elasticsearch \
-              ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }}
+              ghcr.io/${{ github.repository }}/estate-metrics:latest
