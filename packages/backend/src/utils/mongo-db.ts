@@ -113,6 +113,7 @@ class MongoDBService {
 
         const res = await collection.bulkWrite(bulkOps);
         logger.debug(`Index ${indexName}: Upserted ${records.length} documents`);
+        // @ts-ignore
         return { indexName, ...res };
       } catch (error) {
         logger.error(`Index ${indexName}: Error upserting documents:`, error);

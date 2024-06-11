@@ -2,24 +2,21 @@ version: "3.8"
 services:
   estatemetrics:
     container_name: EstateMetrics_node
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/rileyhilliard/estatemetrics/estate-metrics:latest
     ports:
-      - "5001:5000"
+      - "4000:4000"
     depends_on:
       - elasticsearch
       - mongodb
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_URI=mongodb://root:password@mongodb:27017
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     container_name: EstateMetrics_elasticsearch
     environment:
       - discovery.type=single-node
       - "ES_JAVA_OPTS=-Dhttp.timeout=5m"
-      - "index.refresh_interval=30s"
       - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
     volumes:
       - elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data

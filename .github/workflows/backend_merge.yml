@@ -190,68 +190,24 @@ jobs:
             echo ${{ secrets.ACCESS_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/${{ github.repository }}/estate-metrics:latest
 
-            # Check if EstateMetrics_elasticsearch container is running
-            if [ "$(docker inspect -f '{{.State.Running}}' EstateMetrics_elasticsearch 2>/dev/null)" = "true" ]; then
-              echo "EstateMetrics_elasticsearch is already running"
+            # Navigate to the specified directory
+            cd ~/Docker
+
+            # Check if the repository has already been cloned
+            if [ ! -d "estatemetrics" ]; then
+              # Clone the private repository
+              git clone git@github.com:rileyhilliard/estatemetrics.git
+              cd estatemetrics
             else
-              # Check if EstateMetrics_elasticsearch container exists
-              if docker ps -a --format '{{.Names}}' | grep -Eq "^EstateMetrics_elasticsearch$"; then
-                echo "EstateMetrics_elasticsearch container exists, restarting..."
-                docker restart EstateMetrics_elasticsearch
-              else
-                echo "EstateMetrics_elasticsearch container does not exist, creating..."
-                docker run -d --name EstateMetrics_elasticsearch \
-                  -p 9200:9200 \
-                  -p 9300:9300 \
-                  -e "discovery.type=single-node" \
-                  -e "ES_JAVA_OPTS=-Dhttp.timeout=5m" \
-                  -v elasticsearch-data-estatemetrics:/usr/share/elasticsearch/data \
-                  docker.elastic.co/elasticsearch/elasticsearch:7.17.0
-              fi
+              # Navigate into the repository directory
+              cd estatemetrics
+              
+              # Pull the latest changes from the repository
+              git pull
             fi
 
-            # Check if EstateMetrics_kibana container is running
-            if [ "$(docker inspect -f '{{.State.Running}}' EstateMetrics_kibana 2>/dev/null)" = "true" ]; then
-              echo "EstateMetrics_kibana is already running"
-            else
-              # Check if EstateMetrics_kibana container exists
-              if docker ps -a --format '{{.Names}}' | grep -Eq "^EstateMetrics_kibana$"; then
-                echo "EstateMetrics_kibana container exists, restarting..."
-                docker restart EstateMetrics_kibana
-              else
-                echo "EstateMetrics_kibana container does not exist, creating..."
-                docker run -d --name EstateMetrics_kibana -p 5601:5601 \
-                  -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" \
-                  -e "SERVER_PUBLICBASEURL=http://kibana.opnhub.ai" \
-                  -e "SERVER_HOST=0.0.0.0" \
-                  --link EstateMetrics_elasticsearch:elasticsearch \
-                  docker.elastic.co/kibana/kibana:7.17.20
-              fi
-            fi
+            # Navigate to the docker-compose directory
+            cd packages/dockers/EstateMetrics
 
-            # Check if EstateMetrics_mongodb container is running
-            if [ "$(docker inspect -f '{{.State.Running}}' EstateMetrics_mongodb 2>/dev/null)" = "true" ]; then
-              echo "EstateMetrics_mongodb is already running"
-            else
-              # Check if EstateMetrics_mongodb container exists
-              if docker ps -a --format '{{.Names}}' | grep -Eq "^EstateMetrics_mongodb$"; then
-                echo "EstateMetrics_mongodb container exists, restarting..."
-                docker restart EstateMetrics_mongodb
-              else
-                echo "EstateMetrics_mongodb container does not exist, creating..."
-                docker run -d --name EstateMetrics_mongodb \
-                  -p 27017:27017 \
-                  -e "MONGO_INITDB_ROOT_USERNAME=admin" \
-                  -e "MONGO_INITDB_ROOT_PASSWORD=password" \
-                  -v mongodb-data-estatemetrics:/data/db \
-                  mongo:5.0.27
-              fi
-            fi
-
-            docker stop EstateMetrics_node ; docker rm EstateMetrics_node || true
-            docker run -d --name EstateMetrics_node \
-              -p 4000:4000 \
-              -e "NODE_ENV=production" \
-              --link EstateMetrics_mongodb:mongodb \
-              --link EstateMetrics_elasticsearch:elasticsearch \
-              ghcr.io/${{ github.repository }}/estate-metrics:latest
+            # Run docker-compose
+            docker-compose up -d
