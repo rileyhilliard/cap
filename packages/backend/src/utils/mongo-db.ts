@@ -88,9 +88,7 @@ class MongoDBService {
     ): Promise<BulkWriteResult | void> => {
       const options = _options ?? { inferTypes: true };
       this.validate.dataset(dataset);
-
       await this.index.create(indexName, dataset.records, options);
-
       const { meta, records } = dataset;
 
       if (meta) {
