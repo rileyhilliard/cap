@@ -239,9 +239,11 @@ jobs:
                 docker restart EstateMetrics_mongodb
               else
                 echo "EstateMetrics_mongodb container does not exist, creating..."
-                docker run -d --name EstateMetrics_mongodb -p 27017:27017 \
+                docker run -d --name EstateMetrics_mongodb \
+                  -p 27017:27017 \
                   -e "MONGO_INITDB_ROOT_USERNAME=admin" \
                   -e "MONGO_INITDB_ROOT_PASSWORD=password" \
+                  -v mongodb-data-estatemetrics:/data/db \
                   mongo:5.0.27
               fi
             fi
