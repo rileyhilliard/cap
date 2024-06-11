@@ -168,7 +168,7 @@ class MongoDBService {
           { upsert: true },
         );
       } catch (error) {
-        logger.error(`Index ${indexName}: Error updating metadata:`, error);
+        logger.error(`Index ${collectionName}: Error updating metadata:`, error);
       }
     },
   };
