@@ -4,8 +4,4 @@
 yarn pm2 start pm2.config.cjs --env production
 
 # Keep the container running
-if [ -f "/app/logs/server-0.log" ]; then
-    tail -f "/app/logs/server-0.log"
-else
-    tail -f "/dev/null"
-fi
+yarn pm2 logs
