@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'node-server',
       script: './dist/server.prod.js',
-      log_file: '/app/logs/server.log',
+      log_file: './logs/server.log',
       node_args: '--enable-source-maps',
       time: true,
       // Turning off watch because the docker container is going to be removed and replaced @ deployment time
