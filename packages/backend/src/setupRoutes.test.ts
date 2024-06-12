@@ -110,6 +110,6 @@ describe('Routes', () => {
   // });
 
   it('PASSES', async () => {
-    expect('broooo').toBe('broooo');
+    expect('bro').toBe('bro');
   });
 });
