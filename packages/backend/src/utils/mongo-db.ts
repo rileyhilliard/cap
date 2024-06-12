@@ -32,7 +32,6 @@ class MongoDBService {
 
     this.client = new MongoClient(uri);
     this.db = this.connect();
-    logger?.debug(`Mongodb db set`, this.db);
   }
 
   public static getInstance(): MongoDBService {
@@ -43,8 +42,7 @@ class MongoDBService {
   }
 
   public connect(dbName: string = 'estatemetrics'): Db {
-    logger?.debug(`Mongodb connecting to: ${dbName}`)
-    this.client.connect().then(() => logger?.debug(`Mongodb connected to: ${dbName}`));
+    this.client.connect();
     return this.client.db(dbName);
   }
 

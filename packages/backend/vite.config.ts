@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => {
     esbuild: {
       target: 'esnext',
       sourcemap: true,
+      format: 'cjs'
     },
     // build: {
     //   rollupOptions: {
