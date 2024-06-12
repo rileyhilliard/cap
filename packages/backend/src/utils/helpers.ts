@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import type { MergedProperty } from '@backend/types/property-types';
 import logger from '@utils/logger';
+import { RedfinProperty, ZillowProperty } from '@backend/types/property-types';
 
 export const timestamp = (date: number | Date = new Date()): string => new Date(date).toISOString();
 
@@ -96,7 +97,7 @@ export function hasher(string: string): string {
   return crypto.createHash('sha256').update(string).digest('hex');
 }
 
-export function mergeRecords(redfin: any, zillow: any[]): MergedProperty[] {
+export function mergeRecords(redfin: RedfinProperty[], zillow: ZillowProperty[]): MergedProperty[] {
   const redfinDictionary = Object.create(null);
   redfin.forEach((property) => (redfinDictionary[property.id] = property));
   const mergedRecords = zillow.map((property) => {
@@ -168,7 +169,7 @@ export function getServeArg(arg: string): string | undefined {
 export function getServePort(): number {
   // process.env.PORT is set from pm2.config.cjs
   const pm2PortArg = process.env.PORT;
-  if (pm2PortArg) return pm2PortArg;
+  if (pm2PortArg) return parseInt(pm2PortArg, 10);
 
   let port = 4000; // Default port
   const portArg = parseInt(getServeArg('--port') || '', 10);
