@@ -4,6 +4,7 @@ module.exports = {
       name: 'node-server',
       script: './dist/server.prod.js',
       log_file: '/app/logs/server.log',
+      node_args: '--enable-source-maps',
       time: true,
       // Turning off watch because the docker container is going to be removed and replaced @ deployment time
       // so there's nothing to watch for: the service is going to be killed and replace entirely.

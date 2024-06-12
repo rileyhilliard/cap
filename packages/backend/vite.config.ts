@@ -32,15 +32,9 @@ export default defineConfig(({ mode }) => {
     esbuild: {
       target: 'esnext',
       sourcemap: true,
-      format: 'cjs'
     },
-    // build: {
-    //   rollupOptions: {
-    //     plugins: [resolve()],
-    //     output: {
-    //       format: 'cjs', // Use CommonJS format for the output
-    //     },
-    //   },
-    // },
+    build: {
+      sourcemap: 'inline',
+    },
   };
 });
