@@ -54,7 +54,6 @@ export function setupRoutes(app: Express): void {
     const indexes = getIndexNames(id);
     const rentals = await mongo.data.get(indexes.COMBINED_RENTALS_INDEX);
     const results = await generateRentalReport(indexes.RENTAL_REPORT_INDEX, rentals?.records ?? [])
-
     res.json(results);
   });
 

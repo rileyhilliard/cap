@@ -33,13 +33,8 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       sourcemap: true,
     },
-    // build: {
-    //   rollupOptions: {
-    //     plugins: [resolve()],
-    //     output: {
-    //       format: 'cjs', // Use CommonJS format for the output
-    //     },
-    //   },
-    // },
+    build: {
+      sourcemap: 'inline',
+    },
   };
 });
