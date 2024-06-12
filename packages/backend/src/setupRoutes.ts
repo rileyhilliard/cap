@@ -59,7 +59,6 @@ export function setupRoutes(app: Express): void {
 
   app.get('/v1/metadata', async (req: Request, res: Response) => {
     const results = await mongo.data.get('metadata');
-
     res.json(results);
   });
 
