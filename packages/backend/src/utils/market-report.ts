@@ -27,6 +27,7 @@ export function generateRentalReport(index: string, properties: MergedProperty[]
       type: 'total',
       description: 'All properties over the given timespan, regardless of bedroom count',
     },
+    timestamp: date,
   };
 
   properties.forEach((property) => {
