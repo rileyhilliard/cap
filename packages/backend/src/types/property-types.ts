@@ -1,5 +1,4 @@
 import { MergedHomeRental } from '@utils/redfin';
-import ZillowPropertyOptions from '@utils/zillow';
 export interface LatLong {
   latitude?: number;
   longitude?: number;
