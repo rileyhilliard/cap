@@ -3,7 +3,7 @@ import type { MergedProperty } from '@backend/types/property-types';
 import logger from '@utils/logger';
 import { RedfinProperty, ZillowProperty } from '@backend/types/property-types';
 
-export const timestamp = (date: number | Date = new Date()): string => new Date(date).toISOString();
+export const timestamp = (date: number | Date = new Date()): Date => new Date(date);
 
 export function median(numbers: number[]): number {
   const sorted = numbers.slice().sort((a, b) => a - b);
