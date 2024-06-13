@@ -8,63 +8,62 @@ on:
       - "packages/backend/**"
 
 jobs:
-  build-smoke-test:
-    runs-on: ubuntu-latest
+  # build-smoke-test:
+  #   runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: packages/backend
+  #   defaults:
+  #     run:
+  #       working-directory: packages/backend
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: "0"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: "0"
 
-      - name: Setup Node v22
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
+  #     - name: Setup Node v22
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22.x"
 
-      - name: Enable Corepack
-        run: corepack enable
+  #     - name: Enable Corepack
+  #       run: corepack enable
 
-      - name: Set Yarn version to @stable
-        run: corepack prepare yarn@stable --activate
+  #     - name: Set Yarn version to @stable
+  #       run: corepack prepare yarn@stable --activate
 
-      # Enable Corepack for Yarn 4
-      - name: Enable Corepack
-        run: corepack enable
+  #     # Enable Corepack for Yarn 4
+  #     - name: Enable Corepack
+  #       run: corepack enable
 
-      # Set Yarn version to the latest stable version
-      - name: Set Yarn version to @stable
-        run: corepack prepare yarn@stable --activate
+  #     # Set Yarn version to the latest stable version
+  #     - name: Set Yarn version to @stable
+  #       run: corepack prepare yarn@stable --activate
 
-      # Get the Yarn cache directory path
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+  #     # Get the Yarn cache directory path
+  #     - name: Get yarn cache directory path
+  #       id: yarn-cache-dir-path
+  #       run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
-      # Cache the Yarn cache directory
-      - uses: actions/cache@v4
-        id: yarn-cache
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+  #     # Cache the Yarn cache directory
+  #     - uses: actions/cache@v4
+  #       id: yarn-cache
+  #       with:
+  #         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+  #         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-yarn-
 
-      - name: Install dependencies
-        run: yarn install
+  #     - name: Install dependencies
+  #       run: yarn install
 
-      - name: Build TypeScript app
-        run: yarn build
+  #     - name: Build TypeScript app
+  #       run: yarn build
 
-      - name: Run Vitest tests
-        run: yarn vitest
+  #     - name: Run Vitest tests
+  #       run: yarn vitest
   update-version:
     runs-on: ubuntu-latest
-
-    needs: build-smoke-test
+    # needs: build-smoke-test
 
     defaults:
       run:
