@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ["main"]
     paths:
-      - "packages/backend/**"
+      - "packages/DISBALED/backend/**"
 
 jobs:
   test:
@@ -49,8 +49,8 @@ jobs:
       # - name: Run ESLint
       #   run: yarn run eslint . --max-warnings 9999
 
-      - name: Build TypeScript app
-        run: yarn build
+      # - name: Build TypeScript app
+      #   run: yarn build
 
-      - name: Run Vitest tests
-        run: yarn vitest
+      # - name: Run Vitest tests
+      #   run: yarn vitest

@@ -79,45 +79,59 @@ jobs:
         with:
           node-version: "22.x"
 
-      # Enable Corepack for Yarn 4
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
 
-      # Set Yarn version to the latest stable version
-      - name: Set Yarn version to @stable
-        run: corepack prepare yarn@stable --activate
-
-      # Get the Yarn cache directory path
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
-
-      # Restore the Yarn cache
-      - uses: actions/cache@v4
-        id: yarn-cache
+      - name: ⏫ Bumping version
+        uses: jpb06/bump-package@latest
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          major-keywords: BREAKING CHANGE
+          minor-keywords: feat,minor
+          patch-keywords: fix,chore
+          should-default-to-patch: true
 
-      # Install dependencies (this will use the cached packages if available)
-      - name: Install dependencies
-        run: yarn install
+      # # Enable Corepack for Yarn 4
+      # - name: Enable Corepack
+      #   run: corepack enable
 
-      - name: Bump release version
-        working-directory: packages/backend
-        id: bump-version
-        run: |
-          yarn version patch
+      # # Set Yarn version to the latest stable version
+      # - name: Set Yarn version to @stable
+      #   run: corepack prepare yarn@stable --activate
 
-      - name: Update package.json
-        working-directory: packages/backend
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add package.json
-          git push origin main --tags
+      # # Get the Yarn cache directory path
+      # - name: Get yarn cache directory path
+      #   id: yarn-cache-dir-path
+      #   run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      # # Restore the Yarn cache
+      # - uses: actions/cache@v4
+      #   id: yarn-cache
+      #   with:
+      #     path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+      #     key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-yarn-
+
+      # # Install dependencies (this will use the cached packages if available)
+      # - name: Install dependencies
+      #   run: yarn install
+
+      # - name: Bump release version
+      #   working-directory: packages/backend
+      #   id: bump-version
+      #   run: |
+      #     yarn version patch
+
+      # - name: Update package.json
+      #   working-directory: packages/backend
+      #   run: |
+      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      #     git config --global user.name "github-actions[bot]"
+      #     git add package.json
+      #     git push origin main --tags
 
   build:
     runs-on: ubuntu-latest
