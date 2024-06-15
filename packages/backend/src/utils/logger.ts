@@ -47,7 +47,7 @@ const durationFormat = format.printf((info) => {
     .map((arg: unknown) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
     .join(' ');
 
-  return `${chalk.bold(formattedTimestamp)} [${info.level}]: ${chalk.magenta(info.message)} ${chalk.blue(`(${formattedDuration})`)}${!info.level?.includes('info') ? '\n' + chalk.dim(stack) : ''}${argsString ? '\n' + argsString : ''}`;
+  return `${isDev ? chalk.bold(formattedTimestamp) + ' ' : ''}[${info.level}]: ${chalk.magenta(info.message)} ${chalk.blue(`(${formattedDuration})`)}${!info.level?.includes('info') ? '\n' + chalk.dim(stack) : ''}${argsString ? '\n' + argsString : ''}`;
 });
 
 function removeLines(stack?: string, num: number = 2): string {
@@ -60,11 +60,11 @@ function cleanStackTrace(stack?: string, trim = true): string {
   return stack
     .split('\n')
     .map((line) => {
-      let cleaned = line.replace(trimPath, '').replace(/\((\w+)\/src\//, '(@$1/src/').replace(/\(.*\/node_modules\//, '(/node_modules/');
+      let cleaned = line.replace(trimPath, '').replace(/\(.*\/node_modules\//, '(/node_modules/');
       if (trim) {
         return cleaned.trim();
       }
-      return cleaned;
+      return isDev ? cleaned : cleaned.replace(/\((\w+)\/src\//, '(@$1/src/');
     })
     .join('\n');
 }
@@ -83,18 +83,10 @@ const consoleTransport: transports.ConsoleTransportInstance = new transports.Con
   ),
 });
 
-class ElasticsearchTransport extends Transport {
-  private esService: ElasticSearch;
-
-  constructor() {
-    super(...arguments);
-    this.esService = MongoDBService.getInstance();
-  }
-
+class MonitoringTransport extends Transport {
   log(context: any, callback: () => void) {
     setImmediate(() => this.emit('logged', context));
 
-    // only log errors and warnings to Elasticsearch in production
     if (!isDev && (context.level === 'error' || context.level === 'warn')) {
       const stack = getStackTrace(context);
       const logData: LogData = {
@@ -116,11 +108,13 @@ class ElasticsearchTransport extends Transport {
           messageAndStack: hasher(`${context.message}${context.stack}`),
         }
       };
-      this.esService.index.upsert('backend-logs', { records: [logData] })
+      const mongo = MongoDBService.getInstance();
+
+      mongo.index.upsert('backendLogs', { records: [logData] })
         .then(() => callback())
         .catch((error) => {
           const firstItem = error?.context?.[0]?.items?.[0];
-          console.error('Failed to log to Elasticsearch:', firstItem, error);
+          console.error('Failed to log to DB:', firstItem, error);
           callback();
         });
     } else {
@@ -138,7 +132,7 @@ const fileRotateTransport: DailyRotateFile = new DailyRotateFile({
   maxFiles: '7d', // keep logs for 7 days
 });
 
-const esTransport = new ElasticsearchTransport();
+const monitoringTransport = new MonitoringTransport();
 
 // Logger instance
 const logger: Logger = createLogger({
@@ -161,22 +155,27 @@ const logger: Logger = createLogger({
   transports: [
     fileRotateTransport,
     consoleTransport,
-    esTransport,
+    monitoringTransport,
   ],
-  exceptionHandlers: [new transports.File({ filename: 'logs/exceptions.log' }), consoleTransport, esTransport],
-  rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' }), consoleTransport, esTransport],
+  exceptionHandlers: [new transports.File({ filename: 'logs/exceptions.log' }), consoleTransport, monitoringTransport],
+  rejectionHandlers: [new transports.File({ filename: 'logs/rejections.log' }), consoleTransport, monitoringTransport],
 });
 
-function log(level: 'error' | 'warn' | 'info' | 'debug', message: string, meta: Record<string, any> | unknown = {}, err: Error) {
+function log(level: 'error' | 'warn' | 'info' | 'debug', message: string, meta: Record<string, any> | Error | unknown = {}, err: Error) {
   if (meta instanceof Error) {
-    return logger[level](meta.message ?? message, meta);
+    if (message !== meta.message) {
+      logger[level](chalk.bold(message), meta);
+    } else {
+      logger[level](meta);
+    }
+    return;
   }
 
-  if (meta && typeof meta === 'object') {
-    Object.keys(meta).forEach((key) => (err as any)[key] = meta[key]);
+  if (typeof meta === 'object' && meta !== null) {
+    Object.assign(err, meta);
   }
 
-  logger[level](message, err);
+  logger[level](err);
 }
 
 const customLogger = {
@@ -190,7 +189,7 @@ const customLogger = {
   },
   info: (message: string, meta: Record<string, any> | unknown = {}) => {
     const err = new Error(message);
-    log('info', message, meta, err)
+    log('info', message, meta, err);
   },
   debug: (message: string, meta: Record<string, any> | unknown = {}) => {
     const err = new Error(message);
@@ -207,7 +206,7 @@ interface LogData {
   service?: string;
   level: string;
   environment: string;
-  timestamp: string;
+  timestamp: Date;
   version: string;
   package: string;
   mode: string;

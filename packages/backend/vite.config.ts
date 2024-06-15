@@ -5,7 +5,6 @@ import excludeDependenciesFromBundle from 'rollup-plugin-exclude-dependencies-fr
 
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
-
   return {
     server: {
       port: 4000,

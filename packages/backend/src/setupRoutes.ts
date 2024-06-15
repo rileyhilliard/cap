@@ -4,6 +4,7 @@ import { runJob } from '@utils/job';
 import MongoDBService from '@utils/mongo-db';
 import logger from '@utils/logger';
 import { generateRentalReport } from '@utils/market-report';
+import { syncToPostgres } from '@utils/postgres';
 
 export function setupRoutes(app: Express): void {
   const mongo = MongoDBService.getInstance();
@@ -46,6 +47,11 @@ export function setupRoutes(app: Express): void {
     const results = await mongo.data.get('registered_indexes');
 
     res.json(results);
+  });
+
+  app.get('/v1/sync', async (req: Request, res: Response) => {
+    await syncToPostgres();
+    res.json({ result: 'saynced' });
   });
 
   app.get('/v1/report/:id', async (req: Request, res: Response) => {

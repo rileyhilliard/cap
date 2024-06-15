@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { MergedProperty } from '@backend/types/property-types';
 import logger from '@utils/logger';
 import { RedfinProperty, ZillowProperty } from '@backend/types/property-types';
+import env from 'dotenv';
 
 export const timestamp = (date: number | Date = new Date()): Date => new Date(date);
 
@@ -16,13 +17,17 @@ export function median(numbers: number[]): number {
   return sorted[middle];
 }
 
+/**
+ * Checks if a given string is a valid URL.
+ * @param value - The string to be validated as a URL.
+ * @returns True if the string is a valid URL, false otherwise.
+ */
 export function isValidUrl(value: string): boolean {
-  try {
-    new URL(value);
-    return true;
-  } catch (err) {
-    return false;
-  }
+  // Regular expression pattern for URL validation
+  const urlPattern = /^https?:\/\/\w+(\.\w+)*(:[0-9]+)?(\/.*)?$/;
+
+  // Test the string against the URL pattern
+  return urlPattern.test(value);
 }
 
 // Helper function to extract and parse the price from a string
@@ -46,35 +51,41 @@ export function percentile(numbers: number[], percentile: number, winsorize = tr
 
 export const isDev: boolean = process.env.NODE_ENV === 'development';
 
+// Winsorize data by capping values at specified percentiles
 function winsorizeData(numbers: number[], lowerPercentile = 5, upperPercentile = 95): number[] {
   const sorted = numbers.slice().sort((a, b) => a - b);
-  const lowerIndex = Math.floor((lowerPercentile / 100) * sorted.length);
-  const upperIndex = Math.floor((upperPercentile / 100) * sorted.length);
-  const lowerValue = sorted[lowerIndex];
-  const upperValue = sorted[upperIndex];
+  const [lowerValue, upperValue] = [
+    sorted[Math.floor((lowerPercentile / 100) * sorted.length)],
+    sorted[Math.floor((upperPercentile / 100) * sorted.length)]
+  ];
 
-  return numbers.map((num) => {
-    if (num < lowerValue) {
-      return lowerValue;
-    } else if (num > upperValue) {
-      return upperValue;
-    } else {
-      return num;
-    }
-  });
+  return numbers.map(num => Math.max(lowerValue, Math.min(num, upperValue)));
 }
 
+/**
+ * Calculates the value at a given percentile in a list of numbers.
+ * @param numbers - The input array of numbers.
+ * @param percentile - The percentile to calculate (0-100).
+ * @returns The value at the specified percentile.
+ */
 function calculatePercentile(numbers: number[], percentile: number): number {
-  const sorted = numbers.slice().sort((a, b) => a - b);
-  const index = (percentile / 100) * sorted.length;
-  const lower = Math.floor(index);
-  const upper = lower + 1;
-  const weight = index % 1;
+  // Create a copy of the input array and sort it in ascending order
+  const sorted = [...numbers].sort((a, b) => a - b);
 
-  if (upper >= sorted.length) {
+  // Calculate the index corresponding to the percentile
+  const index = (percentile / 100) * (sorted.length - 1);
+
+  // Find the lower and upper indices for interpolation
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+
+  // If the percentile falls on an exact index, return that value
+  if (lower === upper) {
     return sorted[lower];
   }
 
+  // Interpolate between the lower and upper values
+  const weight = index - lower;
   return sorted[lower] * (1 - weight) + sorted[upper] * weight;
 }
 
@@ -180,4 +191,7 @@ export function getServePort(): number {
   }
   return port;
 }
+
+// see .env.dev / .env.prod for env vars
+export const config = env.config({ path: `.env.${isDev ? 'dev' : 'prod'}` }).parsed ?? {};
 

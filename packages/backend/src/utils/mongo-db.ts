@@ -1,6 +1,6 @@
 import { type BulkWriteResult, MongoClient, Db, Collection, Document, Filter, UpdateFilter, FindOptions } from 'mongodb';
 import logger from '@utils/logger';
-import { isDev, hasher } from '@utils/helpers';
+import { config } from '@utils/helpers';
 
 // Left off @ right now metadata is implemented as a record in a collection: that's not great for obvious reasons
 // can metadata be stored in a separate collection? or in a separate field in the same collection unrelated to the collection?
@@ -16,7 +16,7 @@ import { isDev, hasher } from '@utils/helpers';
 class MongoDBService {
   private static instance: MongoDBService;
   private client: MongoClient;
-  private db: Db;
+  public db: Db;
 
   private constructor() {
     if (MongoDBService.instance) {
@@ -25,9 +25,9 @@ class MongoDBService {
       );
     }
 
-    const uri = process.env.MONGODB_URI || (isDev ? `mongodb://localhost:27017` : 'mongodb://admin:password@mongodb:27017');
+    const uri = config.MONGO_URI;
     if (!uri) {
-      throw new Error('MONGODB_URI environment variable is not set');
+      throw new Error('MONGO_URI environment variable is not set');
     }
 
     this.client = new MongoClient(uri);

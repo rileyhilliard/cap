@@ -17,6 +17,7 @@ module.exports = {
       env: {
         PORT: 4000,
         ELASTIC: 'http://elasticsearch:9200',
+        POSTGRES_URI: 'http://root:postgres@postgres:5432',
       },
     },
   ],
