@@ -14,7 +14,6 @@ export function setupRoutes(app: Express): void {
     console.time(`PUT /v1/regions/${req.params.id}`);
     const { id } = req.params;
 
-    // register the region to the db
     await updateRegionsIndex(id, req.body);
 
     // scrapes the region and upserts the data to the db
