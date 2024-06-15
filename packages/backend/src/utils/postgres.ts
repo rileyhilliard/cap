@@ -14,6 +14,7 @@ async function processCollections(
 ): Promise<void> {
   for (const { name } of collections) {
     logger.info(`Processing collection: ${name}`);
+
     const collection = db.collection(name);
     const collectionDocuments = await collection.find().toArray();
     const uniqueDocuments = new Map<string, Document>();
