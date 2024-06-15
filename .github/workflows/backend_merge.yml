@@ -44,15 +44,15 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add package.json
-          git commit -m "Bump version to ${{ env.new_version }}"
+          git commit -m "Bump version to ${{ env.NEW_VERSION }}"
           git push origin main
 
       - name: Create and push tag
         env:
           NEW_VERSION: ${{ steps.bump-version.outputs.new_version }}
         run: |
-          git tag -a "v${{ env.new_version }}" -m "Release version ${{ env.new_version }}"
-          git push origin "v${{ env.new_version }}"
+          git tag -a "v${{ env.NEW_VERSION }}" -m "Release version ${{ env.NEW_VERSION }}"
+          git push origin "v${{ env.NEW_VERSION }}"
 
       - name: Create GitHub release
         uses: actions/create-release@v1
@@ -60,9 +60,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ steps.bump-version.outputs.new_version }}
         with:
-          tag_name: "v${{ env.new_version }}"
-          release_name: "Release v${{ env.new_version }}"
-          body: "Release of version ${{ env.new_version }}"
+          tag_name: "v${{ env.NEW_VERSION }}"
+          release_name: "Release v${{ env.NEW_VERSION }}"
+          body: "Release of version ${{ env.NEW_VERSION }}"
           draft: false
           prerelease: false
 
