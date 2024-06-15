@@ -4,96 +4,6 @@ import logger from '@utils/logger';
 import { config } from '@utils/helpers';
 import { type Db } from 'mongodb';
 
-interface Schema {
-  [key: string]: string;
-}
-
-interface Document {
-  [key: string]: any;
-}
-
-interface Collection {
-  name: string;
-}
-
-interface MongoDB {
-  collection: (name: string) => any;
-  listCollections: () => Promise<Collection[]>;
-}
-
-interface Transformer {
-  (doc: Document): Document;
-}
-
-// Define schemas for different collections
-const rentalSchema: Schema = {
-  id: 'TEXT',
-  beds: 'DOUBLE PRECISION',
-  baths: 'DOUBLE PRECISION',
-  description: 'TEXT',
-  first_listed: 'TIMESTAMP',
-  first_seen: 'TIMESTAMP',
-  last_seen: 'TIMESTAMP',
-  lat: 'DOUBLE PRECISION',
-  lon: 'DOUBLE PRECISION',
-  sqft: 'DOUBLE PRECISION',
-  price: 'MONEY',
-  address: 'TEXT',
-  url: 'TEXT'
-};
-
-const propertySchema: Schema = {
-  id: 'TEXT',
-  beds: 'DOUBLE PRECISION',
-  baths: 'DOUBLE PRECISION',
-  description: 'TEXT',
-  first_listed: 'TIMESTAMP',
-  first_seen: 'TIMESTAMP',
-  last_seen: 'TIMESTAMP',
-  lat: 'DOUBLE PRECISION',
-  lon: 'DOUBLE PRECISION',
-  sqft: 'SMALLINT',
-  price: 'MONEY',
-  address: 'TEXT',
-  url: 'TEXT',
-  median_rent: 'MONEY',
-  avg_rent: 'MONEY',
-  costs_tax: 'MONEY',
-  costs_maintenance: 'MONEY',
-  costs_insurance: 'MONEY',
-  costs_hoa: 'MONEY',
-  costs_total: 'MONEY',
-  returns_avg_net: 'MONEY',
-  returns_avg_gross: 'MONEY',
-  returns_avg_roi: 'MONEY',
-  returns_avg_caprate: 'MONEY',
-  returns_avg_cashFlow: 'MONEY',
-  returns_avg_breakEvenYears: 'MONEY',
-  returns_median_net: 'MONEY',
-  returns_median_gross: 'MONEY',
-  returns_median_roi: 'DOUBLE PRECISION',
-  returns_median_caprate: 'DOUBLE PRECISION',
-  returns_median_cashFlow: 'MONEY',
-  returns_median_breakEvenYears: 'DOUBLE PRECISION'
-};
-
-const reportSchema: Schema = {
-  index: 'TEXT',
-  date: 'TIMESTAMP',
-  beds: 'DOUBLE PRECISION',
-  count: 'SMALLINT',
-  avg_sqft: 'DOUBLE PRECISION',
-  avg_rent: 'DOUBLE PRECISION',
-  median_rent: 'MONEY',
-  avg_rent_per_sqft: 'MONEY',
-  median_rent_per_sqft: 'MONEY',
-  type: 'TEXT',
-  description: 'TEXT',
-  rent_percentile_25: 'MONEY',
-  rent_percentile_50: 'MONEY',
-  rent_percentile_90: 'MONEY'
-};
-
 // Function to reset the database
 async function resetDatabase(dbName = 'root'): Promise<void> {
   const pgPool = new Pool({ connectionString: config.POSTGRES_URI });
@@ -289,3 +199,88 @@ async function clearAllTables(pgClient: PoolClient): Promise<void> {
     logger.error('Error clearing tables:', error);
   }
 }
+
+
+interface Schema {
+  [key: string]: string;
+}
+
+interface Document {
+  [key: string]: any;
+}
+
+interface Collection {
+  name: string;
+}
+interface Transformer {
+  (doc: Document): Document;
+}
+
+// Define schemas for different collections
+const rentalSchema: Schema = {
+  id: 'TEXT',
+  beds: 'DOUBLE PRECISION',
+  baths: 'DOUBLE PRECISION',
+  description: 'TEXT',
+  first_listed: 'TIMESTAMP',
+  first_seen: 'TIMESTAMP',
+  last_seen: 'TIMESTAMP',
+  lat: 'DOUBLE PRECISION',
+  lon: 'DOUBLE PRECISION',
+  sqft: 'DOUBLE PRECISION',
+  price: 'MONEY',
+  address: 'TEXT',
+  url: 'TEXT'
+};
+
+const propertySchema: Schema = {
+  id: 'TEXT',
+  beds: 'DOUBLE PRECISION',
+  baths: 'DOUBLE PRECISION',
+  description: 'TEXT',
+  first_listed: 'TIMESTAMP',
+  first_seen: 'TIMESTAMP',
+  last_seen: 'TIMESTAMP',
+  lat: 'DOUBLE PRECISION',
+  lon: 'DOUBLE PRECISION',
+  sqft: 'SMALLINT',
+  price: 'MONEY',
+  address: 'TEXT',
+  url: 'TEXT',
+  median_rent: 'MONEY',
+  avg_rent: 'MONEY',
+  costs_tax: 'MONEY',
+  costs_maintenance: 'MONEY',
+  costs_insurance: 'MONEY',
+  costs_hoa: 'MONEY',
+  costs_total: 'MONEY',
+  returns_avg_net: 'MONEY',
+  returns_avg_gross: 'MONEY',
+  returns_avg_roi: 'MONEY',
+  returns_avg_caprate: 'MONEY',
+  returns_avg_cashFlow: 'MONEY',
+  returns_avg_breakEvenYears: 'MONEY',
+  returns_median_net: 'MONEY',
+  returns_median_gross: 'MONEY',
+  returns_median_roi: 'DOUBLE PRECISION',
+  returns_median_caprate: 'DOUBLE PRECISION',
+  returns_median_cashFlow: 'MONEY',
+  returns_median_breakEvenYears: 'DOUBLE PRECISION'
+};
+
+const reportSchema: Schema = {
+  index: 'TEXT',
+  date: 'TIMESTAMP',
+  beds: 'DOUBLE PRECISION',
+  count: 'SMALLINT',
+  avg_sqft: 'DOUBLE PRECISION',
+  avg_rent: 'DOUBLE PRECISION',
+  median_rent: 'MONEY',
+  avg_rent_per_sqft: 'MONEY',
+  median_rent_per_sqft: 'MONEY',
+  type: 'TEXT',
+  description: 'TEXT',
+  rent_percentile_25: 'MONEY',
+  rent_percentile_50: 'MONEY',
+  rent_percentile_90: 'MONEY'
+};

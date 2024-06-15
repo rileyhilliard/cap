@@ -64,6 +64,10 @@ jobs:
   update-version:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: packages/backend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -76,11 +80,11 @@ jobs:
       - name: Bump version
         id: bump-version
         run: |
-          current_version=$(jq -r '.version' packages/backend/package.json)
+          current_version=$(jq -r '.version' package.json)
           IFS='.' read -r -a version_parts <<< "$current_version"
           version_parts[2]=$((version_parts[2] + 1))
           new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
-          jq ".version = \"$new_version\"" packages/backend/package.json > tmp.$$.json && mv tmp.$$.json packages/backend/package.json
+          jq ".version = \"$new_version\"" package.json > tmp.$$.json && mv tmp.$$.json package.json
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Commit version bump
@@ -89,7 +93,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add packages/backend/package.json
+          git add package.json
           git commit -m "Bump version to ${{ env.NEW_VERSION }}"
           git push origin main
 
@@ -103,6 +107,7 @@ jobs:
       - name: Create GitHub release
         uses: actions/create-release@v1
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ steps.bump-version.outputs.new_version }}
         with:
           tag_name: "v${{ env.NEW_VERSION }}"
