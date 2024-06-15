@@ -55,16 +55,15 @@ jobs:
           git push origin "v${{ env.NEW_VERSION }}"
 
       - name: Create GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ steps.bump-version.outputs.new_version }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${{ env.NEW_VERSION }}"
-          release_name: "Release v${{ env.NEW_VERSION }}"
-          body: "Release of version ${{ env.NEW_VERSION }}"
+          tag_name: "v${{ steps.bump-version.outputs.new_version }}"
+          name: "Release v${{ steps.bump-version.outputs.new_version }}"
+          body: "Release of version ${{ steps.bump-version.outputs.new_version }}"
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     runs-on: ubuntu-latest
