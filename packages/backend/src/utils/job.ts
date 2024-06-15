@@ -2,6 +2,7 @@ import MongoDBService from '@utils/mongo-db';
 import { fetchRegion } from '@utils/region';
 import logger from '@utils/logger';
 import { isDev } from '@utils/helpers';
+import { syncToPostgres } from '@utils/postgres';
 
 interface RegionData {
   region: string;
@@ -104,4 +105,6 @@ export const runJob = async () => {
       await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
     }
   }
+
+  syncToPostgres();
 };
