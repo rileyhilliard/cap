@@ -132,8 +132,6 @@ export function mergeRecords(redfin: RedfinProperty[], zillow: ZillowProperty[])
     }
     return property;
   });
-  // for now, purge any listing over 1M
-  // .filter(property => property.price < 1000000);
 
   return mergedRecords.concat(Object.values(redfinDictionary)).sort((a, b) => (a.address < b.address ? -1 : 1));
 }
