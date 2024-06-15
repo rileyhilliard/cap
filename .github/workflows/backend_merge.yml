@@ -8,65 +8,15 @@ on:
       - "packages/backend/**"
 
 jobs:
-  # build-smoke-test:
-  #   runs-on: ubuntu-latest
-
-  #   defaults:
-  #     run:
-  #       working-directory: packages/backend
-
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: "0"
-
-  #     - name: Setup Node v22
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "22.x"
-
-  #     - name: Enable Corepack
-  #       run: corepack enable
-
-  #     - name: Set Yarn version to @stable
-  #       run: corepack prepare yarn@stable --activate
-
-  #     # Enable Corepack for Yarn 4
-  #     - name: Enable Corepack
-  #       run: corepack enable
-
-  #     # Set Yarn version to the latest stable version
-  #     - name: Set Yarn version to @stable
-  #       run: corepack prepare yarn@stable --activate
-
-  #     # Get the Yarn cache directory path
-  #     - name: Get yarn cache directory path
-  #       id: yarn-cache-dir-path
-  #       run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
-
-  #     # Cache the Yarn cache directory
-  #     - uses: actions/cache@v4
-  #       id: yarn-cache
-  #       with:
-  #         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-  #         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-yarn-
-
-  #     - name: Install dependencies
-  #       run: yarn install
-
-  #     - name: Build TypeScript app
-  #       run: yarn build
-
-  #     - name: Run Vitest tests
-  #       run: yarn vitest
   update-version:
     runs-on: ubuntu-latest
 
     defaults:
       run:
         working-directory: packages/backend
+
+    outputs:
+      new_version: ${{ steps.bump-version.outputs.new_version }}
 
     steps:
       - name: Checkout repository
@@ -85,7 +35,7 @@ jobs:
           version_parts[2]=$((version_parts[2] + 1))
           new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
           jq ".version = \"$new_version\"" package.json > tmp.$$.json && mv tmp.$$.json package.json
-          echo "new_version=$new_version" >> $GITHUB_ENV
+          echo "::set-output name=new_version::$new_version"
 
       - name: Commit version bump
         env:
@@ -128,24 +78,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bump version
-        id: bump-version
-        run: |
-          current_version=$(jq -r '.version' package.json)
-          IFS='.' read -r -a version_parts <<< "$current_version"
-          version_parts[2]=$((version_parts[2] + 1))
-          new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
-          jq ".version = \"$new_version\"" package.json > tmp.$$.json && mv tmp.$$.json package.json
-
-      - name: Read package.json
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: packages/backend
-
-      - name: Log read version
-        run: echo ${{ steps.package-version.outputs.current-version }}
-
       - name: Set up Docker
         uses: docker-practice/actions-setup-docker@master
 
@@ -160,7 +92,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/arm64 \
-            -t ghcr.io/${{ github.repository }}/estate-metrics:${{ steps.package-version.outputs.current-version }} \
+            -t ghcr.io/${{ github.repository }}/estate-metrics:${{ needs.update-version.outputs.new_version }} \
             -t ghcr.io/${{ github.repository }}/estate-metrics:latest \
             --push .
 
@@ -175,12 +107,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Read package.json
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: packages/backend
 
       - name: Pull New Image and Restart
         uses: appleboy/ssh-action@v1.0.3
