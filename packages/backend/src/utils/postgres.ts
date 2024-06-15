@@ -4,29 +4,6 @@ import logger from '@utils/logger';
 import { config } from '@utils/helpers';
 import { type Db } from 'mongodb';
 
-// Function to reset the database
-async function resetDatabase(dbName = 'root'): Promise<void> {
-  const pgPool = new Pool({ connectionString: config.POSTGRES_URI });
-
-  try {
-    const pgClient = await pgPool.connect();
-
-    // Drop the existing database
-    await pgClient.query(`DROP DATABASE IF EXISTS ${dbName}`);
-    logger.info(`Database ${dbName} dropped successfully.`);
-
-    // Create a new database
-    await pgClient.query(`CREATE DATABASE ${dbName}`);
-    logger.info(`Database ${dbName} created successfully.`);
-
-    pgClient.release();
-  } catch (error) {
-    logger.error('Error resetting the database:', error);
-  } finally {
-    await pgPool.end();
-  }
-}
-
 // Function to process collections with a transformer
 async function processCollections(
   collections: Collection[],
