@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from 'pg';
+import postgres from 'pg';
 import MongoDBService from '@utils/mongo-db';
 import logger from '@utils/logger';
 import { config } from '@utils/helpers';
@@ -8,7 +8,7 @@ import { type Db } from 'mongodb';
 async function processCollections(
   collections: Collection[],
   schema: Schema,
-  pgClient: PoolClient,
+  pgClient: postgres.PoolClient,
   db: Db,
   transformer: Transformer
 ): Promise<void> {
@@ -123,7 +123,7 @@ const reportTransformer: Transformer = (report: Document) => {
 // Function to sync data from MongoDB to PostgreSQL
 export async function syncToPostgres(): Promise<void> {
   const mongoClient = MongoDBService.getInstance();
-  const pgPool = new Pool({ connectionString: config.POSTGRES_URI });
+  const pgPool = new postgres.Pool({ connectionString: config.POSTGRES_URI });
 
   const pgClient = await pgPool.connect();
 
@@ -154,7 +154,7 @@ export async function syncToPostgres(): Promise<void> {
 }
 
 // Function to clear all tables in the PostgreSQL database
-async function clearAllTables(pgClient: PoolClient): Promise<void> {
+async function clearAllTables(pgClient: postgres.PoolClient): Promise<void> {
   const dropTablesQuery = `
     DO $$ 
     DECLARE 
