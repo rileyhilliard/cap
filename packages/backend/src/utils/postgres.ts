@@ -2,6 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import MongoDBService from '@utils/mongo-db';
 import logger from '@utils/logger';
 import { config } from '@utils/helpers';
+import { type Db } from 'mongodb';
 
 interface Schema {
   [key: string]: string;
@@ -121,25 +122,24 @@ async function processCollections(
   collections: Collection[],
   schema: Schema,
   pgClient: PoolClient,
-  db: MongoDB,
+  db: Db,
   transformer: Transformer
 ): Promise<void> {
   for (const { name } of collections) {
     logger.info(`Processing collection: ${name}`);
     const collection = db.collection(name);
-    let documents = await collection.find().toArray();
+    const collectionDocuments = await collection.find().toArray();
     const uniqueDocuments = new Map<string, Document>();
 
-    documents = documents
+    collectionDocuments
       .filter(({ _id }: { _id: any }) => _id !== 'metadata')
-      .map((doc: Document) => {
+      .forEach((doc: Document) => {
         const transformedDoc = transformer(doc);
         uniqueDocuments.set(doc._id, transformedDoc);
         return transformedDoc;
-      })
-      .filter((doc: Document, index: number, self: Document[]) => self.findIndex(d => d.id === doc.id) === index);
+      });
 
-    documents = Array.from([...uniqueDocuments.values()]).flat();
+    const documents = Array.from([...uniqueDocuments.values()]).flat();
     const columns = Object.entries(schema).map(([key, type]) => `${key} ${type}`).join(',');
 
     await pgClient.query(`DROP TABLE IF EXISTS ${name} CASCADE`);
@@ -243,7 +243,7 @@ export async function syncToPostgres(): Promise<void> {
     // Clear all tables
     await clearAllTables(pgClient);
 
-    const db = mongoClient.db;
+    const db: Db = mongoClient.db;
     const collections = await db.listCollections().toArray();
     const rentalCollections = collections.filter(c => c.name.endsWith('_rentals'));
     const propertyCollections = collections.filter(c => c.name.endsWith('_properties'));
