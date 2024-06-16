@@ -344,8 +344,12 @@ export function decorateProperties(
 ): DecoratedProperty[] {
   return properties.map((property) => {
     const { beds, hoa, price } = property;
-    const report = rentalAnalysis[beds] ?? {};
+    // fallback to 4/3 bedroom report if there's no report data
+    // this happens if the beds count is high, like a 14 bedroom probably doenst 
+    // have any comparative rental data
+    const report = rentalAnalysis[beds] ?? rentalAnalysis[4] ?? rentalAnalysis[3] ?? rentalAnalysis[2] ?? {};
     const { avgRent = 0, medianRent = 0 } = report;
+
 
     const yearlyCosts: YearlyCosts = {
       tax: decimals(price * YEARLY_TAX_RATE),
