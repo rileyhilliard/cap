@@ -113,9 +113,9 @@ const reportTransformer: Transformer = (report: Document) => {
         median_rent: medianRent,
         avg_rent_per_sqft: avgRentPerSqft,
         median_rent_per_sqft: medianRentPerSqft,
-        rent_percentile_25: rentPercentiles['25th'],
-        rent_percentile_50: rentPercentiles['50th'],
-        rent_percentile_90: rentPercentiles['90th'],
+        rent_percentile_25: rentPercentiles?.['25th'],
+        rent_percentile_50: rentPercentiles?.['50th'],
+        rent_percentile_90: rentPercentiles?.['90th'],
       };
     });
 };

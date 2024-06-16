@@ -142,6 +142,7 @@ const upsertData = async (indexData: ReturnType<typeof getIndexData>) => {
 
   for (const { index, records, meta } of indexData) {
     await mongo.index.upsert(index, { records, meta });
+    logger.info(`Upserted ${index} with ${records.length} records 🎉`);
   }
 };
 
