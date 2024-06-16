@@ -3,7 +3,7 @@ import { scrapeRedfinProperties, scrapeRedfinRentals } from '@backend/utils/redf
 import { scrapeZillowRentals, scrapeZillowProperties, decorateProperties } from '@utils/zillow';
 import MongoDBService from '@utils/mongo-db';
 import { generateRentalReport } from '@utils/market-report';
-import { mergeRecords, timestamp, hasher, isDev } from '@utils/helpers';
+import { mergeRecords, timestamp, hasher, isDev, delayRandom } from '@utils/helpers';
 import type { ZillowRentalOptions, ZillowPropertyOptions } from '@utils/zillow';
 import type {
   ZillowRental,
@@ -85,13 +85,55 @@ const scrapeData = async (
   zillow: RegionConfig['zillow'],
   redfin: RegionConfig['redfin'],
 ): Promise<BulkScrapedData> => {
-  const [zillowRentalResults, redfinRentalResults, zillowPropertiesResults, redfinPropertiesResults] =
-    await Promise.all([
-      scrapeZillowRentals(indexes.ZILLOW_RENTALS_INDEX, zillow.rentals),
-      scrapeRedfinRentals(indexes.REDFIN_RENTALS_INDEX, redfin.rentals),
-      scrapeZillowProperties(indexes.ZILLOW_PROPERTIES_INDEX, getZillowPropertyConfig(zillow.properties)),
-      scrapeRedfinProperties(indexes.REDFIN_PROPERTIES_INDEX, getRedfinPropertyConfig(redfin.properties)),
-    ]);
+  const startTime = Date.now();
+  logger.info('Fetching data from Zillow and Redfin...');
+
+  const [
+    zillowRentalResults,
+    redfinRentalResults,
+    zillowPropertiesResults,
+    redfinPropertiesResults,
+  ] = await Promise.all([
+    scrapeZillowRentals(indexes.ZILLOW_RENTALS_INDEX, zillow.rentals)
+      .then(async (result) => {
+        logger.info('Zillow rentals fetch succeeded');
+        return result;
+      })
+      .catch((error) => {
+        logger.error('Zillow rentals fetch failed', error);
+        throw error;
+      }),
+    delayRandom().then(() => scrapeRedfinRentals(indexes.REDFIN_RENTALS_INDEX, redfin.rentals)
+      .then(async (result) => {
+        logger.info('Redfin rentals fetch succeeded');
+        return result;
+      })
+      .catch((error) => {
+        logger.error('Redfin rentals fetch failed', error);
+        throw error;
+      })),
+    delayRandom().then(() => scrapeZillowProperties(indexes.ZILLOW_PROPERTIES_INDEX, getZillowPropertyConfig(zillow.properties))
+      .then(async (result) => {
+        logger.info('Zillow properties fetch succeeded');
+        return result;
+      })
+      .catch((error) => {
+        logger.error('Zillow properties fetch failed', error);
+        throw error;
+      })),
+    delayRandom().then(() => scrapeRedfinProperties(indexes.REDFIN_PROPERTIES_INDEX, getRedfinPropertyConfig(redfin.properties))
+      .then(async (result) => {
+        logger.info('Redfin properties fetch succeeded');
+        return result;
+      })
+      .catch((error) => {
+        logger.error('Redfin properties fetch failed', error);
+        throw error;
+      })),
+  ]);
+
+  const endTime = Date.now();
+  logger.info(`Data fetching succeeded. Time taken: ${endTime - startTime}ms`);
 
   return { zillowRentalResults, redfinRentalResults, zillowPropertiesResults, redfinPropertiesResults };
 };

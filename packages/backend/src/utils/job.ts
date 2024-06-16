@@ -1,7 +1,7 @@
 import MongoDBService from '@utils/mongo-db';
 import { fetchRegion } from '@utils/region';
 import logger from '@utils/logger';
-import { isDev } from '@utils/helpers';
+import { isDev, delayRandom } from '@utils/helpers';
 import { syncToPostgres } from '@utils/postgres';
 
 interface RegionData {
@@ -100,9 +100,13 @@ export const runJob = async () => {
     }
 
     if (!isDev && index < records.length - 1) {
+<<<<<<< Updated upstream
       const delaySeconds = Math.floor(Math.random() * 50) + 10; // Random delay between 10 and 59 seconds
       logger.info(`Waiting ${delaySeconds} seconds before syncing the next region.`);
       await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+=======
+      await delayRandom(10, 20);
+>>>>>>> Stashed changes
     }
   }
 
