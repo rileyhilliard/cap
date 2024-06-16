@@ -1,5 +1,4 @@
-import { timestamp } from '@utils/helpers';
-import { median, percentile, decimals } from '@utils/helpers';
+import { timestamp, median, percentile, decimals } from '@utils/helpers';
 import type { MergedProperty } from '@backend/types/property-types';
 
 export function generateRentalReport(index: string, properties: MergedProperty[]): RentalReport {
