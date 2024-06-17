@@ -1,0 +1,30 @@
+name: Auto open a PR and Auto Merge
+
+on:
+  push:
+    branches:
+      - dev
+    branches-ignore:
+      - main
+
+permissions:
+  pull-requests: write
+
+jobs:
+  auto-pr-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Pull Request
+        id: cpr
+        run: |
+          gh_pr_up() { gh pr create $* || gh pr edit $* }
+          PR_URL=$(gh_pr_up --title "Automatic PR for ${{ github.ref_name }}" --body "This is an 🪄 automagically 🪄 generated PR to merge changes from ${{ github.ref_name }}")
+          echo "::set-output name=pull-request-number::$(echo $PR_URL | grep -oP '\d+$')"
+
+      - name: Merge Pull Request
+        uses: juliangruber/merge-pull-request-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ steps.cpr.outputs.pull-request-number }}
+          method: squash

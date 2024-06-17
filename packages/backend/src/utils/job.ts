@@ -88,7 +88,7 @@ export const runJob = async () => {
 
   const records = registeredRegions?.records ?? ([] as RegionData[]);
   logger.info(
-    `Starting cron job execution. Regions ${records.map(({ region }) => region).join(', ')} will be synced.`,
+    `Starting execution of the cron job. Regions ${records.map(({ region }) => region).join(', ')} will be synced.`,
   );
 
   for (const [index, { region }] of records.entries()) {
