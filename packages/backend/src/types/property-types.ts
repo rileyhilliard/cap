@@ -232,7 +232,7 @@ export interface RedfinRental
     'price' | 'latLong' | 'bedRange' | 'bathRange' | 'sqftRange' | 'rentPriceRange' | 'photosInfo' | 'addressInfo'
   > {
   lastSeen: string;
-  firstSeen: string;
+  firstSeen: Date;
   address: string;
   id: string;
   beds?: number;

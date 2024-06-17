@@ -35,3 +35,9 @@ jobs:
           GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --squash --repo ${{ github.repository }}
+
+      - name: Delete dev-hot branch
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          gh api -X DELETE repos/${{ github.repository }}/git/refs/heads/dev-hot
