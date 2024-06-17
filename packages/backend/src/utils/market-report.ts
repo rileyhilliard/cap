@@ -104,7 +104,6 @@ interface BedroomDictionary {
   sqFts?: number[];
   sqftRents?: number[];
   prices?: number[];
-  timestamp: Date;
 }
 
 export interface Stats {
