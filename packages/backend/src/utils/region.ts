@@ -123,7 +123,7 @@ const scrapeData = async (
       })),
     delayRandom().then(() => scrapeRedfinProperties(indexes.REDFIN_PROPERTIES_INDEX, getRedfinPropertyConfig(redfin.properties))
       .then(async (result) => {
-        logger.info('Redfin properties fetch succeeded');
+        logger.info('Redfin properties fetch succeeded 🎉');
         return result;
       })
       .catch((error) => {

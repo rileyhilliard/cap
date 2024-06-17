@@ -13,16 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install GitHub CLI
+
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+                sudo apt update
+                sudo apt install gh
       - name: Create Pull Request
         id: cpr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh_pr_up() { gh pr create $* || gh pr edit $* }
-          PR_URL=$(gh_pr_up --title "Automatic PR for ${{ github.ref_name }}" --body "This is an 🪄 automagically 🪄 generated PR to merge changes from ${{ github.ref_name }}")
+          gh_pr_up() {
+            gh pr create "$@" || gh pr edit "$@"
+          }
+          PR_URL=$(gh_pr_up --title "Automatic PR for dev-hot" --body "This is an 🪄 automagically 🪄 generated PR to merge changes from dev-hot")
           echo "::set-output name=pull-request-number::$(echo $PR_URL | grep -oP '\d+$')"
-
       - name: Merge Pull Request
-        uses: juliangruber/merge-pull-request-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          number: ${{ steps.cpr.outputs.pull-request-number }}
-          method: squash
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --squash --repo ${{ github.repository }}
