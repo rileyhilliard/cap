@@ -3,9 +3,7 @@ name: Auto open a PR and Auto Merge
 on:
   push:
     branches:
-      - dev
-    branches-ignore:
-      - main
+      - dev-hot
 
 permissions:
   pull-requests: write
