@@ -96,7 +96,7 @@ export function setupRoutes(app: Express): void {
   });
 
   app.get('/v1/error', async (req: Request, res: Response) => {
-    logger.error('This is an error log');
+    logger.error('This is an error logg');
     logger.debug('this is for debugging')
     logger.info('this should be informational')
     logger.warn('this is a warning')
