@@ -23,11 +23,10 @@ jobs:
         id: cpr
         run: |
           gh_pr_up() {
-            gh pr create $* || gh pr edit $*
+            gh pr create "$@" || gh pr edit "$@"
           }
-          PR_URL=$(gh_pr_up --title "Automatic PR for ${{ github.ref_name }}" --body "This is an 🪄 automagically 🪄 generated PR to merge changes from ${{ github.ref_name }}")
+          PR_URL=$(gh_pr_up --title "Automatic PR for dev-hot" --body "This is an 🪄 automagically 🪄 generated PR to merge changes from dev-hot")
           echo "::set-output name=pull-request-number::$(echo $PR_URL | grep -oP '\d+$')"
-
       - name: Merge Pull Request
         uses: juliangruber/merge-pull-request-action@v1
         with:
