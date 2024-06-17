@@ -34,4 +34,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --squash --repo ${{ github.repository }} --token $GH_TOKEN
+          gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --squash --repo ${{ github.repository }}
