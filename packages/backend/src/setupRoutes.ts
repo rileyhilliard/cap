@@ -95,6 +95,11 @@ export function setupRoutes(app: Express): void {
     res.json(results);
   });
 
+  app.delete('/v1/indexes/:id', async (req: Request, res: Response) => {
+    const results = await mongo.index.deleteIndex(req.params.id);
+    res.json(results);
+  });
+
   app.get('/v1/error', async (req: Request, res: Response) => {
     logger.error('This is an error logg');
     logger.debug('this is for debugging')

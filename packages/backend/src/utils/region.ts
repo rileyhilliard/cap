@@ -255,7 +255,7 @@ export async function fetchRegion(regionId: string) {
 
   // I dont think I need to update this again 🤔
   // await updateRegionsIndex(regionId, options);
-  upsertData(indexData);
+  await upsertData(indexData);
 
   return processedData.decoratedProperties;
 }
