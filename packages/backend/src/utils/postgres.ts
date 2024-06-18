@@ -33,7 +33,9 @@ async function processCollections(
     await pgClient.query(`DROP TABLE IF EXISTS ${name} CASCADE`);
     await pgClient.query(`CREATE TABLE ${name} (${columns})`);
 
-    for (const document of documents) {
+    for (const _document of documents) {
+      // for some reason 'buffer' is being added to report documents
+      const { buffer, ...document } = _document;
       const cols = Object.keys(document).map(key => `"${key}"`).join(', ');
       const values = Object.values(document);
       const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');

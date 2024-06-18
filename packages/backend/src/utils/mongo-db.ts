@@ -101,13 +101,20 @@ class MongoDBService {
         const collection = this.collection(indexName);
         const bulkOps = records.map((doc) => {
           const { _id, id, ...dockWithoutId } = doc;
+          if (!id && !_id) {
+            return {
+              insertOne: {
+                document: dockWithoutId,
+              },
+            };
+          }
           return {
             updateOne: {
-              filter: { _id: id },
+              filter: { _id: id || _id },
               update: { $set: dockWithoutId },
               upsert: true,
             },
-          }
+          };
         });
 
         const res = await collection.bulkWrite(bulkOps);
@@ -130,10 +137,11 @@ class MongoDBService {
       }
     },
 
-    deleteIndex: async (indexName: string): Promise<void> => {
+    deleteIndex: async (indexName: string): Promise<void | { index: string, dropped: boolean }> => {
       try {
-        await this.db.dropCollection(indexName);
+        const res = await this.db.dropCollection(indexName);
         logger.debug('Index deleted:', indexName);
+        return { index: indexName, dropped: res };
       } catch (error: Error | any) {
         if (!error?.message?.includes('ns not found')) {
           console.error('Error deleting index:', error);

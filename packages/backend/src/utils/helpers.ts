@@ -194,7 +194,7 @@ export function getServePort(): number {
 export const config = env.config({ path: `.env.${isDev ? 'dev' : 'prod'}` }).parsed ?? {};
 
 export async function delayRandom(low: number = 5, high: number = 30) {
-  const delay = Math.floor(Math.random() * high) + low; // Random delay between 5 and 30 seconds
+  const delay = isDev ? 0 : Math.floor(Math.random() * high) + low; // Random delay between 5 and 30 seconds
   logger.info(`Waiting ${delay} seconds before continuing.`);
   return new Promise((resolve) => setTimeout(resolve, delay * 1000));
 }

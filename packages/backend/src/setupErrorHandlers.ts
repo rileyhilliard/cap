@@ -6,6 +6,7 @@ export function setupErrorHandlers(): void {
   });
 
   process.on('uncaughtException', (error: Error) => {
-    logger.error('uncaughtException', { uncaughtException: true, ...error });
+    error.uncaughtException = true
+    logger.error('uncaughtException', error);
   });
 }
